@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+
 public class Enemy : MonoBehaviour
 {
     [Header("移动设置")]
@@ -12,29 +12,22 @@ public class Enemy : MonoBehaviour
     public float maxLifeTime = 8f; // 最大生存时间
     public float respawnDelay = 1f; // 重新激活前的延迟时间
     
-    [Header("得分系统")]
-    public TextMeshProUGUI scoreText; // 显示分数的UI文本
+    [Header("敌人设置")]
+    public float imageWidth = 100f; // UI Image的宽度
     
     private RectTransform rectTransform;
     private float canvasWidth;
-    private float imageWidth = 100f; // UI Image的宽度
     private float currentSpeed;
     private float moveDirection; // 移动方向：-1为左，1为右
-    private Player player; // 引用Player用于碰撞检测
-    private bool gameOver = false;
     private float currentLifeTime; // 当前生存时间
     private float lifeTimer; // 生存计时器
     private bool isRespawning = false; // 是否正在重生过程中
     private float respawnTimer = 0f; // 重生计时器
     private UnityEngine.UI.Image enemyImage; // 敌人的Image组件
-    private static int score = 0; // 静态分数，所有Enemy实例共享
     private bool hasScored = false; // 标记当前轮次是否已经得分
-
-    public Button button;
     
     void Start()
     {
-        button.onClick.AddListener(OnButtonClick);
         // 获取RectTransform组件
         rectTransform = GetComponent<RectTransform>();
         
@@ -55,10 +48,8 @@ public class Enemy : MonoBehaviour
             Debug.LogWarning("Enemy: 未找到Canvas，使用Screen.width作为备用");
         }
         
-        // 查找Player对象
-        player = FindObjectOfType<Player>();
-        
         // 根据玩家速度调整敌人的最大速度
+        Player player = FindObjectOfType<Player>();
         if (player != null)
         {
             float playerSpeed = player.moveSpeed;
@@ -67,19 +58,12 @@ public class Enemy : MonoBehaviour
         
         // 随机初始化
         InitializeRandomly(true);
-        
-        // 更新分数显示
-        UpdateScoreDisplay();
-    }
-
-    void OnButtonClick()
-    {
-        RestartGame();
     }
 
     void Update()
     {
-        if (!gameOver)
+        // 只有在游戏未结束时才处理敌人逻辑
+        if (GameManager.Instance != null && !GameManager.Instance.IsGameOver())
         {
             if (isRespawning)
             {
@@ -88,7 +72,6 @@ public class Enemy : MonoBehaviour
             else
             {
                 HandleMovement();
-                CheckCollision();
                 HandleLifeCycle();
             }
         }
@@ -158,21 +141,6 @@ public class Enemy : MonoBehaviour
         rectTransform.anchoredPosition = currentPos;
     }
     
-    private void CheckCollision()
-    {
-        // 只有在敌人可见时才检测碰撞
-        if (player != null && enemyImage != null && enemyImage.enabled)
-        {
-            float playerX = player.GetXPosition();
-            float enemyX = rectTransform.anchoredPosition.x;
-            
-            // 检测x坐标差值是否小于100
-            if (Mathf.Abs(playerX - enemyX) < 100f)
-            {
-                GameOver();
-            }
-        }
-    }
     
     private void HandleLifeCycle()
     {
@@ -187,13 +155,11 @@ public class Enemy : MonoBehaviour
     
     private void StartRespawn()
     {
-        // 如果玩家成功躲过这一轮，增加分数
-        if (!hasScored && !gameOver)
+        // 如果玩家成功躲过这一轮，通过GameManager增加分数
+        if (!hasScored && GameManager.Instance != null)
         {
-            score++;
+            GameManager.Instance.AddScore(1);
             hasScored = true;
-            UpdateScoreDisplay();
-            Debug.Log("玩家躲过一轮攻击！当前分数：" + score);
         }
         
         // 隐藏敌人（通过禁用Image组件）
@@ -218,18 +184,6 @@ public class Enemy : MonoBehaviour
         }
     }
     
-    private void GameOver()
-    {
-        gameOver = true;
-        
-        // 暂停游戏
-        Time.timeScale = 0f;
-        
-        // 输出游戏结束信息
-        Debug.Log("游戏结束！玩家与敌人发生碰撞！最终分数：" + score);
-        
-        // 这里可以添加更多游戏结束的逻辑，比如显示游戏结束UI等
-    }
     
     // 获取当前x坐标位置
     public float GetXPosition()
@@ -237,42 +191,27 @@ public class Enemy : MonoBehaviour
         return rectTransform.anchoredPosition.x;
     }
     
-    // 重新开始游戏的方法
-    public void RestartGame()
+    // 重置敌人状态的方法（由GameManager调用）
+    public void ResetEnemy()
     {
-        rectTransform.anchoredPosition = new Vector2(300f, 0f);
-        player.SetPosition(0f);
+        // 重置位置
+        rectTransform.anchoredPosition = new Vector2(400f, 0f);
 
         // 重新根据玩家速度调整敌人的最大速度
+        Player player = FindObjectOfType<Player>();
         if (player != null)
         {
             float playerSpeed = player.moveSpeed;
             maxSpeed = Mathf.Min(6f, playerSpeed); // 使用原始最大速度6f和玩家速度的最小值
         }
-
-        // 重置分数
-        score = 0;
-        UpdateScoreDisplay();
-
-        gameOver = false;
-        Time.timeScale = 1f;
         
         // 重新初始化敌人
         InitializeRandomly(true);
     }
     
-    // 更新分数显示
-    private void UpdateScoreDisplay()
+    // 检查敌人是否可见
+    public bool IsVisible()
     {
-        if (scoreText != null)
-        {
-            scoreText.text = "Score: " + score;
-        }
-    }
-    
-    // 获取当前分数（供外部访问）
-    public static int GetScore()
-    {
-        return score;
+        return enemyImage != null && enemyImage.enabled;
     }
 }

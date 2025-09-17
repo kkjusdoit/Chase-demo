@@ -5,9 +5,11 @@ public class Player : MonoBehaviour
     [Header("移动设置")]
     public float moveSpeed = 5f; // 移动速度
     
+    [Header("玩家设置")]
+    public float imageWidth = 100f; // UI Image的宽度
+    
     private RectTransform rectTransform;
     private float canvasWidth;
-    private float imageWidth = 100f; // UI Image的宽度
     
     void Start()
     {
@@ -41,7 +43,11 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        HandleMovement();
+        // 只有在游戏未结束时才处理移动
+        if (GameManager.Instance != null && !GameManager.Instance.IsGameOver())
+        {
+            HandleMovement();
+        }
     }
     
     private void HandleMovement()

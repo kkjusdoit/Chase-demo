@@ -17,6 +17,11 @@
         </div>
       </div>
       <div id="unity-warning"> </div>
+      <div id="mobile-instructions" style="display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
+                                           background: rgba(0,0,0,0.7); color: white; padding: 10px 15px; border-radius: 20px; 
+                                           font-size: 14px; z-index: 1000; text-align: center;">
+        📱 触摸屏幕左右两侧移动角色
+      </div>
       <div id="unity-footer">
         <div id="unity-logo-title-footer"></div>
         <div id="unity-fullscreen-button"></div>
@@ -154,6 +159,21 @@
             document.querySelector("#unity-fullscreen-button").onclick = () => {
               unityInstance.SetFullscreen(1);
             };
+            
+            // 如果是移动设备，显示触摸控制说明
+            if (isMobile) {
+              const instructions = document.querySelector("#mobile-instructions");
+              instructions.style.display = "block";
+              
+              // 5秒后自动隐藏说明
+              setTimeout(() => {
+                instructions.style.opacity = "0";
+                instructions.style.transition = "opacity 1s";
+                setTimeout(() => {
+                  instructions.style.display = "none";
+                }, 1000);
+              }, 5000);
+            }
           }).catch((message) => {
             console.error(`加载失败 (尝试 ${attempts}/${maxRetries}):`, message);
             

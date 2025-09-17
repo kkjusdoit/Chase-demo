@@ -46,7 +46,35 @@ public class Player : MonoBehaviour
     
     private void HandleMovement()
     {
-        float horizontalInput = Input.GetAxis("Horizontal");
+        float horizontalInput = 0f;
+        
+        // 检测键盘输入（桌面端）
+        horizontalInput = Input.GetAxis("Horizontal");
+        
+        // 检测触摸输入（移动端）
+        if (horizontalInput == 0f && Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+            if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+            {
+                // 获取触摸位置相对于屏幕中心的偏移
+                Vector2 touchPos = touch.position;
+                float screenCenterX = Screen.width * 0.5f;
+                float touchOffset = (touchPos.x - screenCenterX) / screenCenterX;
+                
+                // 将触摸偏移转换为移动输入 (-1 到 1)
+                horizontalInput = Mathf.Clamp(touchOffset, -1f, 1f);
+            }
+        }
+        
+        // 检测鼠标输入（备用方案，也适用于移动端点击）
+        if (horizontalInput == 0f && Input.GetMouseButton(0))
+        {
+            Vector3 mousePos = Input.mousePosition;
+            float screenCenterX = Screen.width * 0.5f;
+            float mouseOffset = (mousePos.x - screenCenterX) / screenCenterX;
+            horizontalInput = Mathf.Clamp(mouseOffset, -1f, 1f);
+        }
         
         if (horizontalInput != 0)
         {

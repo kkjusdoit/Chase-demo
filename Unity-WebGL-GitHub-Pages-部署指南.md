@@ -422,7 +422,113 @@ public class MobileBuildOptimizer
 }
 ```
 
-### 🚫 坑6：Unity WebGL中Screen.width的陷阱
+### 🚫 坑6：移动设备缺少输入控制
+
+**问题**：游戏在移动设备上无法控制，因为移动设备没有键盘输入。
+
+**错误代码**：
+```csharp
+// ❌ 只支持键盘输入，移动设备无法操作
+private void HandleMovement()
+{
+    float horizontalInput = Input.GetAxis("Horizontal"); // 只有键盘/手柄输入
+    
+    if (horizontalInput != 0)
+    {
+        // 移动逻辑
+    }
+}
+```
+
+**技术原理**：
+- **Input.GetAxis("Horizontal")**：仅响应键盘方向键或手柄输入
+- **移动设备限制**：没有物理键盘，无法触发Horizontal轴输入
+- **Unity WebGL特性**：默认不启用虚拟手柄或触摸控制
+
+**正确解决方案**：
+```csharp
+// ✅ 支持键盘、触摸、鼠标的多平台输入
+private void HandleMovement()
+{
+    float horizontalInput = 0f;
+    
+    // 检测键盘输入（桌面端）
+    horizontalInput = Input.GetAxis("Horizontal");
+    
+    // 检测触摸输入（移动端）
+    if (horizontalInput == 0f && Input.touchCount > 0)
+    {
+        Touch touch = Input.GetTouch(0);
+        if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+        {
+            // 获取触摸位置相对于屏幕中心的偏移
+            Vector2 touchPos = touch.position;
+            float screenCenterX = Screen.width * 0.5f;
+            float touchOffset = (touchPos.x - screenCenterX) / screenCenterX;
+            
+            // 将触摸偏移转换为移动输入 (-1 到 1)
+            horizontalInput = Mathf.Clamp(touchOffset, -1f, 1f);
+        }
+    }
+    
+    // 检测鼠标输入（备用方案）
+    if (horizontalInput == 0f && Input.GetMouseButton(0))
+    {
+        Vector3 mousePos = Input.mousePosition;
+        float screenCenterX = Screen.width * 0.5f;
+        float mouseOffset = (mousePos.x - screenCenterX) / screenCenterX;
+        horizontalInput = Mathf.Clamp(mouseOffset, -1f, 1f);
+    }
+    
+    if (horizontalInput != 0)
+    {
+        // 统一的移动逻辑
+    }
+}
+```
+
+**用户体验优化**：
+```javascript
+// 在HTML中添加移动端操作说明
+// 游戏加载完成后显示触摸控制提示
+if (isMobile) {
+    showMobileInstructions();
+    
+    // 5秒后自动隐藏说明
+    setTimeout(() => {
+        hideMobileInstructions();
+    }, 5000);
+}
+```
+
+**进阶方案：虚拟手柄**
+```csharp
+// 可选：添加屏幕虚拟手柄UI
+public class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+{
+    public float maxDistance = 100f;
+    private Vector2 inputVector;
+    
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        // 开始拖拽
+    }
+    
+    public void OnDrag(PointerEventData eventData)
+    {
+        Vector2 position = Vector2.zero;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            rectTransform, eventData.position, eventData.pressEventCamera, out position);
+        
+        inputVector = (position / maxDistance);
+        inputVector = (inputVector.magnitude > 1.0f) ? inputVector.normalized : inputVector;
+    }
+    
+    public Vector2 GetInputVector() => inputVector;
+}
+```
+
+### 🚫 坑7：Unity WebGL中Screen.width的陷阱
 
 **问题**：游戏在浏览器中运行时，角色移动边界计算错误，可能导致角色消失或移动范围不正确。
 

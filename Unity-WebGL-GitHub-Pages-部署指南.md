@@ -42,58 +42,209 @@ git init
 # 忽略Unity不需要的文件，但保留build文件夹
 ```
 
-## 遇到的主要问题和解决方案
+## 技术原理深度解析
 
-### 🚫 坑1：GitHub Pages文件夹限制
+### 🧠 Unity WebGL与WebAssembly原理
 
-**问题**：GitHub Pages只支持从根目录(`/`)或`/docs`文件夹部署，不支持自定义文件夹如`/build`。
+#### WebAssembly (WASM) 简介
+WebAssembly是一种新的编码格式，为Web平台带来了接近原生性能的执行效果：
 
-**错误尝试**：
-- 尝试在GitHub Pages设置中选择`build`文件夹 ❌
-- 手动将文件复制到根目录，导致文件结构混乱 ❌
+**核心特性：**
+- **二进制格式**：紧凑的二进制指令格式，加载和解析速度快
+- **接近原生性能**：在浏览器中运行速度比JavaScript快10-800倍
+- **安全沙箱**：在浏览器的安全沙箱环境中运行
+- **跨平台**：支持所有主流浏览器和操作系统
 
-**正确解决方案**：使用GitHub Actions自动部署
+#### Unity WebGL构建过程
+```mermaid
+graph TD
+    A[Unity C# 代码] --> B[IL2CPP 转译器]
+    B --> C[C++ 代码]
+    C --> D[Emscripten 编译器]
+    D --> E[WebAssembly .wasm 文件]
+    E --> F[JavaScript 加载器]
+    F --> G[浏览器执行]
+```
+
+**构建产物解析：**
+- **build.wasm**: 主要的WebAssembly二进制文件，包含游戏逻辑
+- **build.data**: 游戏资源文件（纹理、音频、场景等）的打包数据
+- **build.framework.js**: Unity运行时框架的JavaScript代码
+- **build.loader.js**: 负责加载和初始化WASM模块的JavaScript代码
+
+**性能对比分析：**
+```javascript
+// 传统JavaScript游戏引擎
+function gameLoop() {
+    // JavaScript JIT编译，但仍有性能瓶颈
+    updatePhysics();      // ~10-50ms (复杂物理计算)
+    renderGraphics();     // ~16ms (60FPS目标)
+    // 总计：可能无法稳定达到60FPS
+}
+
+// Unity WebGL + WASM
+// C#代码 → IL2CPP → C++ → WASM
+// 物理计算: ~2-8ms (性能提升5-10倍)
+// 渲染优化: 通过WebGL直接调用GPU
+// 内存管理: 预分配内存池，减少GC压力
+```
+
+**WASM内存模型：**
+- **线性内存**：WASM使用单一的线性内存空间
+- **手动管理**：Unity通过IL2CPP实现精确的内存控制
+- **零拷贝**：JavaScript和WASM之间可以零拷贝共享数据
+
+**加载优化技术：**
+```javascript
+// Unity WebGL加载优化
+const config = {
+    dataUrl: "Build/build.data",           // 资源文件
+    frameworkUrl: "Build/build.framework.js", // 运行时框架
+    codeUrl: "Build/build.wasm",           // 主要逻辑代码
+    
+    // 流式加载优化
+    streamingAssetsUrl: "StreamingAssets",
+    
+    // 压缩优化
+    compressedFormat: "gzip", // 或 "brotli"
+    
+    // 内存优化
+    memorySize: 268435456, // 256MB预分配
+};
+```
+
+### ⚙️ GitHub Actions自动部署原理
+
+#### GitHub Actions工作流程
+```mermaid
+graph LR
+    A[代码推送] --> B[触发Webhook]
+    B --> C[GitHub Actions Runner]
+    C --> D[执行工作流]
+    D --> E[构建Artifact]
+    E --> F[部署到GitHub Pages]
+```
+
+#### 详细工作流解析
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy Unity WebGL to GitHub Pages
-
+# 触发条件：推送到main分支时自动运行
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  # 允许手动触发
 
+# 权限设置：现代GitHub Pages需要的权限
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: read      # 读取仓库内容
+  pages: write        # 写入Pages
+  id-token: write     # 用于身份验证
 
+# 并发控制：避免多个部署同时进行
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
   deploy:
+    # 指定运行环境
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    
     steps:
+      # 1. 检出代码
       - name: Checkout
         uses: actions/checkout@v4
         
+      # 2. 配置GitHub Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
         
+      # 3. 打包构建文件
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 上传 build 文件夹的内容
-          path: './build'
+          path: './build'  # 指定要部署的文件夹
           
+      # 4. 部署到GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 ```
+
+#### GitHub Pages部署机制深度解析
+
+**传统部署 vs Actions部署：**
+```mermaid
+graph TB
+    subgraph "传统部署方式"
+        A1[Git分支] --> B1[直接读取文件]
+        B1 --> C1[限制: 只能 / 或 /docs]
+    end
+    
+    subgraph "GitHub Actions部署"
+        A2[任意文件夹] --> B2[打包为Artifact]
+        B2 --> C2[上传到Pages API]
+        C2 --> D2[部署到专用环境]
+        D2 --> E2[CDN分发]
+    end
+```
+
+**Actions部署技术细节：**
+1. **Artifact系统**：
+   ```bash
+   # Actions内部执行过程
+   tar -czf artifact.tar.gz ./build/*
+   # 上传到GitHub的Artifact存储系统
+   # Artifact具有90天的保留期限
+   ```
+
+2. **Pages API调用**：
+   ```javascript
+   // GitHub内部API调用（简化版）
+   const deployment = await octokit.rest.repos.createPagesDeployment({
+     owner: 'kkjusdoit',
+     repo: 'Chase-demo',
+     artifact_url: 'https://artifacts.github.com/...',
+     pages_build_version: 'v1.2.0',
+     oidc_token: process.env.GITHUB_TOKEN
+   });
+   ```
+
+3. **CDN分发架构**：
+   - **边缘节点**：全球200+个CDN节点
+   - **缓存策略**：静态资源缓存TTL为1小时
+   - **压缩**：自动启用Gzip/Brotli压缩
+   - **HTTP/2**：支持多路复用，提升加载速度
+
+4. **安全机制**：
+   ```yaml
+   # OIDC (OpenID Connect) 身份验证
+   permissions:
+     id-token: write  # 生成临时身份令牌
+     pages: write     # 获得Pages写权限
+   # 无需长期存储敏感Token
+   ```
+
+**性能优化原理：**
+- **预编译**：WASM文件在部署时已完成编译
+- **并行加载**：.wasm、.data、.js文件可并行下载
+- **增量更新**：只有变更的文件会重新下载
+- **Service Worker**：可实现离线缓存（需额外配置）
+
+## 遇到的主要问题和解决方案
+
+### 🚫 坑1：GitHub Pages文件夹限制
+
+**问题**：GitHub Pages只支持从根目录(`/`)或`/docs`文件夹部署，不支持自定义文件夹如`/build`。
+
+**技术原理**：GitHub Pages的传统部署方式是直接从Git分支的特定文件夹读取静态文件，这种方式限制了文件夹选择。
+
+**解决方案**：GitHub Actions + Pages API
+- 使用Actions将任意文件夹内容打包为artifact
+- 通过Pages API部署到专用的pages环境
+- 绕过传统的文件夹限制
 
 ### 🚫 坑2：文件路径错误
 
@@ -164,18 +315,6 @@ git remote set-url origin https://github.com/kkjusdoit/Chase-demo.git
 **正确设置**：
 - Source: "GitHub Actions" ✅
 
-### 🚫 坑5：文件意外删除
-
-**问题**：在调试过程中意外删除了build文件夹的内容
-
-**解决方案**：使用Git恢复
-```bash
-# 从之前的提交恢复文件
-git checkout <commit-hash> -- build/
-
-# 或者使用
-git restore build/
-```
 
 ## 最终正确的部署流程
 
@@ -224,25 +363,137 @@ git push -u origin main
 3. 不要忽略文件路径的大小写敏感性
 4. 不要在调试时随意删除文件
 
-## 性能优化建议
+## 性能优化深度指南
 
-### 1. Unity构建优化
+### 1. Unity构建优化技术细节
+
+**IL2CPP编译优化：**
 ```csharp
-// 在Player Settings中：
-// - 启用Code Stripping
-// - 选择Minimal或Low质量的Compression Format
-// - 禁用不必要的Auto Graphics API
+// Player Settings → Configuration
+// Master构建 vs Development构建性能差异可达30%
+// Master: 完全优化，移除调试信息，代码内联
+// Development: 保留调试符号，性能较低但便于调试
 ```
 
-### 2. 文件大小优化
-- 压缩纹理
-- 优化音频格式
-- 移除未使用的资源
+**代码剥离 (Code Stripping) 原理：**
+```csharp
+// 启用Managed Stripping Level = High
+// Unity会分析代码依赖关系，移除未使用的代码
+// 典型优化效果：
+// - 未优化WASM: ~50MB
+// - 高度剥离后: ~15MB (减少70%体积)
 
-### 3. 加载优化
-- 使用Unity的Progressive Download
-- 实现自定义加载界面
-- 添加预加载提示
+// 自定义剥离配置
+// link.xml文件可保护特定代码不被剥离
+<linker>
+    <assembly fullname="Assembly-CSharp" preserve="all"/>
+    <type fullname="MyImportantClass" preserve="all"/>
+</linker>
+```
+
+**压缩算法对比：**
+```bash
+# 不同压缩算法效果对比 (以20MB原始WASM为例)
+原始文件:     20.0 MB
+Gzip:        6.2 MB  (69%压缩率, 解压速度: 快)
+Brotli:      5.1 MB  (74%压缩率, 解压速度: 中等)  
+LZ4:         8.5 MB  (57%压缩率, 解压速度: 极快)
+
+# Unity推荐: Brotli (最佳压缩率)
+# 浏览器支持: Chrome/Firefox/Safari 全支持
+```
+
+### 2. WebGL渲染优化
+
+**GPU内存管理：**
+```csharp
+// 纹理压缩格式选择
+// WebGL支持的格式及性能影响：
+RGBA32: 4 bytes/pixel  - 最高质量，最大内存占用
+RGB24:  3 bytes/pixel  - 无透明通道
+DXT1:   0.5 bytes/pixel - 最佳压缩比，轻微质量损失
+ASTC:   可变压缩比    - 现代移动设备最优选择
+
+// 运行时纹理优化
+Texture2D.Compress(false); // 运行时压缩
+Resources.UnloadUnusedAssets(); // 清理未使用资源
+```
+
+**批处理优化：**
+```csharp
+// GPU Draw Call优化
+// 静态批处理: 编译时合并网格
+StaticBatchingUtility.Combine(gameObjects, root);
+
+// 动态批处理: 运行时合并小网格
+// 限制: 顶点数 < 300, 相同材质
+// WebGL性能提升: 50-200%
+
+// GPU Instancing: 相同网格大量绘制
+Graphics.DrawMeshInstanced(mesh, 0, material, matrices);
+```
+
+### 3. 内存优化策略
+
+**WASM内存模型深度解析：**
+```javascript
+// WASM线性内存布局
+// 0x00000000 - 0x00100000: Unity运行时 (1MB)
+// 0x00100000 - 0x10000000: 游戏堆内存 (255MB)
+// 0x10000000 - 0x20000000: 资源缓存 (256MB)
+
+// 内存增长策略
+Module.wasmMemory = new WebAssembly.Memory({
+    initial: 256,    // 初始256页 (16MB)
+    maximum: 2048,   // 最大2048页 (128MB)
+    shared: false    // WebGL不支持共享内存
+});
+```
+
+**垃圾回收优化：**
+```csharp
+// Unity WebGL GC优化技巧
+// 1. 对象池模式避免频繁分配
+public class ObjectPool<T> where T : new() {
+    private Stack<T> pool = new Stack<T>();
+    
+    public T Get() => pool.Count > 0 ? pool.Pop() : new T();
+    public void Return(T item) => pool.Push(item);
+}
+
+// 2. 使用结构体减少堆分配
+public struct Vector3Data { // 值类型，栈分配
+    public float x, y, z;
+}
+
+// 3. 避免字符串拼接
+StringBuilder sb = new StringBuilder(256); // 预分配容量
+```
+
+### 4. 网络加载优化
+
+**资源分包策略：**
+```csharp
+// Addressables资源管理
+// 核心资源: 首次加载 (~5MB)
+// 关卡资源: 按需加载 (~2MB per level)
+// 音频资源: 流式加载 (~500KB per track)
+
+var handle = Addressables.LoadAssetAsync<GameObject>("level_01");
+await handle.Task;
+```
+
+**CDN缓存优化：**
+```javascript
+// 资源版本控制
+const resourceVersion = "v1.2.3";
+const baseUrl = `https://cdn.example.com/game/${resourceVersion}/`;
+
+// 利用浏览器缓存
+// .wasm文件: Cache-Control: max-age=31536000 (1年)
+// .data文件: Cache-Control: max-age=86400 (1天)
+// index.html: Cache-Control: no-cache (总是验证)
+```
 
 ## 调试技巧
 

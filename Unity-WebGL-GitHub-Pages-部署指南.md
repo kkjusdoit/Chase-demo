@@ -315,6 +315,85 @@ git remote set-url origin https://github.com/kkjusdoit/Chase-demo.git
 **正确设置**：
 - Source: "GitHub Actions" ✅
 
+### 🚫 坑5：Unity WebGL中Screen.width的陷阱
+
+**问题**：游戏在浏览器中运行时，角色移动边界计算错误，可能导致角色消失或移动范围不正确。
+
+**错误代码**：
+```csharp
+// ❌ 错误：在WebGL中Screen.width是浏览器窗口宽度
+void Start()
+{
+    screenWidth = Screen.width; // 可能是1920px (浏览器窗口)
+    // 但游戏Canvas实际只有800px宽
+}
+
+private void HandleMovement()
+{
+    // 使用错误的边界计算
+    float minX = -screenWidth * 0.5f; // -960px (超出Canvas范围)
+    float maxX = screenWidth * 0.5f;  // +960px (超出Canvas范围)
+}
+```
+
+**技术原理**：
+- **Screen.width在不同平台的含义**：
+  - PC standalone: 游戏窗口宽度
+  - WebGL: **浏览器窗口宽度** (包含地址栏、书签栏等)
+  - Mobile: 设备屏幕宽度
+- **Canvas实际显示区域**：由Canvas Scaler设置决定，可能是固定分辨率
+- **坐标系差异**：RectTransform使用Canvas坐标系，而非屏幕坐标系
+
+**正确解决方案**：
+```csharp
+// ✅ 正确：获取Canvas的实际宽度
+void Start()
+{
+    Canvas canvas = GetComponentInParent<Canvas>();
+    if (canvas != null)
+    {
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasWidth = canvasRect.rect.width; // 获取Canvas实际宽度
+    }
+    else
+    {
+        canvasWidth = Screen.width; // 备用方案
+        Debug.LogWarning("未找到Canvas，使用Screen.width作为备用");
+    }
+}
+
+private void HandleMovement()
+{
+    // 使用正确的Canvas边界
+    float minX = -canvasWidth * 0.5f;
+    float maxX = canvasWidth * 0.5f;
+    
+    // 处理Canvas环绕效果而非屏幕环绕
+    if (currentPos.x < minX)
+        currentPos.x = canvasWidth * 0.5f + halfImageWidth;
+}
+```
+
+**最佳实践**：
+```csharp
+// 通用的Canvas尺寸获取方法
+public static class CanvasUtils
+{
+    public static Vector2 GetCanvasSize(Transform transform)
+    {
+        Canvas canvas = transform.GetComponentInParent<Canvas>();
+        if (canvas != null)
+        {
+            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+            return canvasRect.rect.size;
+        }
+        
+        // 备用方案：使用屏幕尺寸
+        return new Vector2(Screen.width, Screen.height);
+    }
+}
+```
+
 
 ## 最终正确的部署流程
 

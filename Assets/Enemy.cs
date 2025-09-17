@@ -16,7 +16,7 @@ public class Enemy : MonoBehaviour
     public TextMeshProUGUI scoreText; // 显示分数的UI文本
     
     private RectTransform rectTransform;
-    private float screenWidth;
+    private float canvasWidth;
     private float imageWidth = 100f; // UI Image的宽度
     private float currentSpeed;
     private float moveDirection; // 移动方向：-1为左，1为右
@@ -41,8 +41,19 @@ public class Enemy : MonoBehaviour
         // 获取Image组件
         enemyImage = GetComponent<UnityEngine.UI.Image>();
         
-        // 获取屏幕宽度
-        screenWidth = Screen.width;
+        // 获取Canvas的实际宽度而不是屏幕宽度
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas != null)
+        {
+            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+            canvasWidth = canvasRect.rect.width;
+        }
+        else
+        {
+            // 如果找不到Canvas，使用屏幕宽度作为备用
+            canvasWidth = Screen.width;
+            Debug.LogWarning("Enemy: 未找到Canvas，使用Screen.width作为备用");
+        }
         
         // 查找Player对象
         player = FindObjectOfType<Player>();
@@ -85,10 +96,10 @@ public class Enemy : MonoBehaviour
     
     private void InitializeRandomly(bool isFirst = false)
     {
-        // 随机生成初始位置（在屏幕宽度范围内）
+        // 随机生成初始位置（在Canvas宽度范围内）
         float halfImageWidth = imageWidth * 0.5f;
-        float minX = -screenWidth * 0.5f + halfImageWidth;
-        float maxX = screenWidth * 0.5f - halfImageWidth;
+        float minX = -canvasWidth * 0.5f + halfImageWidth;
+        float maxX = canvasWidth * 0.5f - halfImageWidth;
         
         Vector3 randomPos = rectTransform.anchoredPosition;
         randomPos.x = Random.Range(minX, maxX);
@@ -128,20 +139,20 @@ public class Enemy : MonoBehaviour
         Vector3 currentPos = rectTransform.anchoredPosition;
         currentPos.x += moveDirection * currentSpeed * Time.deltaTime * 100f; // 乘以100是因为UI坐标系的缩放
         
-        // 处理屏幕环绕效果
+        // 处理Canvas环绕效果
         float halfImageWidth = imageWidth * 0.5f;
-        float minX = -screenWidth * 0.5f - halfImageWidth;
-        float maxX = screenWidth * 0.5f + halfImageWidth;
+        float minX = -canvasWidth * 0.5f - halfImageWidth;
+        float maxX = canvasWidth * 0.5f + halfImageWidth;
         
         if (currentPos.x < minX)
         {
             // 从左边出去，从右边进来
-            currentPos.x = screenWidth * 0.5f + halfImageWidth;
+            currentPos.x = canvasWidth * 0.5f + halfImageWidth;
         }
         else if (currentPos.x > maxX)
         {
             // 从右边出去，从左边进来
-            currentPos.x = -screenWidth * 0.5f - halfImageWidth;
+            currentPos.x = -canvasWidth * 0.5f - halfImageWidth;
         }
         
         rectTransform.anchoredPosition = currentPos;

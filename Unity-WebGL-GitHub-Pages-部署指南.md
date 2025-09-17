@@ -315,7 +315,114 @@ git remote set-url origin https://github.com/kkjusdoit/Chase-demo.git
 **正确设置**：
 - Source: "GitHub Actions" ✅
 
-### 🚫 坑5：Unity WebGL中Screen.width的陷阱
+### 🚫 坑5：移动设备WebAssembly加载失败
+
+**问题**：游戏在移动设备上显示错误：`abort("both async and sync fetching of the wasm failed")`
+
+**错误原因分析：**
+1. **内存限制**：移动设备内存不足，无法加载大型WASM文件
+2. **网络问题**：移动网络不稳定，WASM文件下载中断
+3. **浏览器限制**：某些移动浏览器对WASM支持有限制
+4. **文件压缩问题**：GitHub Pages的压缩设置可能导致WASM文件损坏
+
+**解决方案：**
+
+#### 方案1：优化WASM文件大小
+```csharp
+// Unity Player Settings 优化
+// Publishing Settings:
+// - Compression Format: Brotli (最佳压缩)
+// - Code Optimization: Master (最小体积)
+// - Managed Stripping Level: High
+// - Use Incremental GC: 启用 (减少内存峰值)
+```
+
+#### 方案2：添加移动设备检测和优化
+```javascript
+// 在index.html中添加移动设备优化
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+var config = {
+    dataUrl: "Build/build.data",
+    frameworkUrl: "Build/build.framework.js",
+    codeUrl: "Build/build.wasm",
+    
+    // 移动设备优化
+    memorySize: isMobile ? 134217728 : 268435456, // 移动设备使用128MB而非256MB
+    devicePixelRatio: isMobile ? 1 : window.devicePixelRatio, // 降低移动设备分辨率
+    
+    // 加载超时设置
+    loadingTimeout: 60000, // 60秒超时
+};
+
+// 添加加载失败重试机制
+function loadWithRetry(maxRetries = 3) {
+    let attempts = 0;
+    
+    function attemptLoad() {
+        attempts++;
+        createUnityInstance(canvas, config).then((unityInstance) => {
+            // 加载成功
+            console.log("Unity实例加载成功");
+        }).catch((message) => {
+            console.error(`加载失败 (尝试 ${attempts}/${maxRetries}):`, message);
+            
+            if (attempts < maxRetries) {
+                console.log("5秒后重试...");
+                setTimeout(attemptLoad, 5000);
+            } else {
+                // 显示友好的错误信息
+                showMobileError();
+            }
+        });
+    }
+    
+    attemptLoad();
+}
+
+function showMobileError() {
+    document.body.innerHTML = `
+        <div style="text-align: center; padding: 20px; font-family: Arial;">
+            <h2>移动设备兼容性问题</h2>
+            <p>抱歉，这个游戏在您的设备上可能无法正常运行。</p>
+            <p>建议：</p>
+            <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+                <li>使用桌面浏览器访问</li>
+                <li>确保网络连接稳定</li>
+                <li>关闭其他应用程序释放内存</li>
+            </ul>
+            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px;">
+                重新尝试
+            </button>
+        </div>
+    `;
+}
+```
+
+#### 方案3：Unity构建设置优化
+```csharp
+// 在Unity中创建移动优化构建配置
+public class MobileBuildOptimizer
+{
+    [MenuItem("Build/Build for Mobile WebGL")]
+    public static void BuildForMobile()
+    {
+        // 设置移动设备优化参数
+        PlayerSettings.WebGL.memorySize = 128; // 128MB内存限制
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        PlayerSettings.SetScriptingBackend(BuildTargetGroup.WebGL, ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.WebGL, ApiCompatibilityLevel.NET_Standard_2_0);
+        
+        // 质量设置优化
+        QualitySettings.SetQualityLevel(0); // 使用最低质量设置
+        
+        // 执行构建
+        BuildPipeline.BuildPlayer(EditorBuildSettings.scenes, "build-mobile", BuildTarget.WebGL, BuildOptions.None);
+    }
+}
+```
+
+### 🚫 坑6：Unity WebGL中Screen.width的陷阱
 
 **问题**：游戏在浏览器中运行时，角色移动边界计算错误，可能导致角色消失或移动范围不正确。
 

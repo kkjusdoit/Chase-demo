@@ -53,6 +53,10 @@
 
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/build.loader.js";
+      
+      // 检测移动设备
+      var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
       var config = {
         arguments: [],
         dataUrl: buildUrl + "/build.data",
@@ -63,6 +67,10 @@
         productName: "Chase",
         productVersion: "1.0",
         showBanner: unityShowBanner,
+        
+        // 移动设备优化
+        memorySize: isMobile ? 134217728 : 268435456, // 移动设备128MB，桌面256MB
+        devicePixelRatio: isMobile ? 1 : window.devicePixelRatio, // 移动设备降低分辨率
       };
 
       // By default, Unity keeps WebGL canvas render target size matched with
@@ -81,7 +89,7 @@
       // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
       // expected to change.
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      if (isMobile) {
         // Mobile device style: fill the whole browser client area with the game canvas:
 
         var meta = document.createElement('meta');
@@ -91,10 +99,8 @@
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
+        // 移动设备性能优化已在config中设置
+        console.log("移动设备检测：启用优化模式");
 
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
@@ -104,21 +110,83 @@
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 
+      // 添加移动设备错误处理函数
+      function showMobileError(message) {
+        document.querySelector("#unity-container").innerHTML = `
+          <div style="text-align: center; padding: 20px; font-family: Arial, sans-serif; background: #f0f0f0; border-radius: 10px;">
+            <h2 style="color: #d32f2f;">移动设备兼容性问题</h2>
+            <p style="margin: 15px 0;">抱歉，游戏在您的设备上无法正常运行。</p>
+            <details style="margin: 15px 0; text-align: left;">
+              <summary style="cursor: pointer; color: #666;">技术详情</summary>
+              <p style="font-size: 12px; color: #999; margin-top: 10px;">${message}</p>
+            </details>
+            <div style="margin: 20px 0;">
+              <p><strong>建议解决方案：</strong></p>
+              <ul style="text-align: left; max-width: 300px; margin: 0 auto; color: #666;">
+                <li>使用桌面浏览器访问</li>
+                <li>确保网络连接稳定</li>
+                <li>关闭其他应用程序释放内存</li>
+                <li>尝试使用Chrome浏览器</li>
+              </ul>
+            </div>
+            <button onclick="location.reload()" 
+                    style="background: #1976d2; color: white; border: none; padding: 12px 24px; 
+                           border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px;">
+              重新尝试
+            </button>
+          </div>
+        `;
+      }
+
+      // 加载Unity实例的函数，支持重试机制
+      function loadUnityWithRetry(maxRetries = 3) {
+        let attempts = 0;
+        
+        function attemptLoad() {
+          attempts++;
+          console.log(`尝试加载Unity实例 (${attempts}/${maxRetries})`);
+          
+          createUnityInstance(canvas, config, (progress) => {
+            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+          }).then((unityInstance) => {
+            console.log("Unity实例加载成功");
+            document.querySelector("#unity-loading-bar").style.display = "none";
+            document.querySelector("#unity-fullscreen-button").onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
+          }).catch((message) => {
+            console.error(`加载失败 (尝试 ${attempts}/${maxRetries}):`, message);
+            
+            if (attempts < maxRetries && !isMobile) {
+              // 桌面设备重试
+              console.log("3秒后重试...");
+              setTimeout(attemptLoad, 3000);
+            } else if (isMobile) {
+              // 移动设备显示友好错误信息
+              showMobileError(message);
+            } else {
+              // 桌面设备最终失败
+              alert("游戏加载失败: " + message);
+            }
+          });
+        }
+        
+        attemptLoad();
+      }
+
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+        loadUnityWithRetry();
+      };
+      script.onerror = () => {
+        console.error("无法加载Unity加载器脚本");
+        if (isMobile) {
+          showMobileError("无法加载Unity加载器脚本，请检查网络连接。");
+        } else {
+          alert("无法加载Unity加载器脚本，请检查网络连接。");
+        }
+      };
 
       document.body.appendChild(script);
 

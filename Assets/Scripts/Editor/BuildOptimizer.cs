@@ -26,7 +26,7 @@ public class BuildOptimizer : MonoBehaviour
 
         if (summary.result == BuildResult.Succeeded)
         {
-            Debug.Log($"构建成功: {summary.totalSize} bytes");
+            Debug.Log($"构建成功: {summary.totalSize / (1024 * 1024)} MB");
             
             // 显示文件大小信息
             ShowBuildSizeInfo();
@@ -51,9 +51,9 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置
-        // PlayerSettings.stripEngineCode = true;
-        // PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
-        // PlayerSettings.stripUnusedMeshComponents = true;
+        PlayerSettings.stripEngineCode = true;
+        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
+        PlayerSettings.stripUnusedMeshComponents = true;
         
         // 脚本编译优化
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.WebGL, ScriptingImplementation.IL2CPP);

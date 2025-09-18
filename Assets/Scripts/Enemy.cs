@@ -48,12 +48,13 @@ public class Enemy : MonoBehaviour
             Debug.LogWarning("Enemy: 未找到Canvas，使用Screen.width作为备用");
         }
         
-        // 根据玩家速度调整敌人的最大速度
+        // 根据玩家速度调整敌人的速度，使其与玩家保持一致
         Player player = FindObjectOfType<Player>();
         if (player != null)
         {
             float playerSpeed = player.moveSpeed;
-            maxSpeed = Mathf.Min(maxSpeed, playerSpeed); // 确保敌人最大速度不超过玩家速度
+            maxSpeed = Mathf.Abs(playerSpeed); // 使用玩家速度的绝对值
+            minSpeed = maxSpeed; // 最小速度也设为相同值，确保一致性
         }
         
         // 随机初始化
@@ -92,11 +93,22 @@ public class Enemy : MonoBehaviour
             rectTransform.anchoredPosition = randomPos;
         }
         
-        // 随机生成移动速度
-        currentSpeed = Random.Range(minSpeed, maxSpeed);
+        // 设置移动速度与玩家一致
+        Player player = FindObjectOfType<Player>();
+        if (player != null)
+        {
+            currentSpeed = player.moveSpeed;
+        }
+        else
+        {
+            currentSpeed = Random.Range(minSpeed, maxSpeed); // 备用方案
+        }
         
         // 随机生成移动方向
         moveDirection = Random.Range(0, 2) == 0 ? -1f : 1f;
+        
+        // 根据移动方向设置初始scale
+        UpdateScale(moveDirection);
         
         // 随机生成生存时间并重置计时器
         currentLifeTime = Random.Range(minLifeTime, maxLifeTime);
@@ -118,6 +130,9 @@ public class Enemy : MonoBehaviour
     
     private void HandleMovement()
     {
+        // 根据移动方向调整scale
+        UpdateScale(moveDirection);
+        
         // 计算新位置
         Vector3 currentPos = rectTransform.anchoredPosition;
         currentPos.x += moveDirection * currentSpeed * Time.deltaTime * 100f; // 乘以100是因为UI坐标系的缩放
@@ -139,6 +154,25 @@ public class Enemy : MonoBehaviour
         }
         
         rectTransform.anchoredPosition = currentPos;
+    }
+    
+    // 根据移动方向更新scale
+    private void UpdateScale(float direction)
+    {
+        Vector3 scale = rectTransform.localScale;
+        
+        if (direction < 0)
+        {
+            // 向左移动，翻转sprite
+            scale.x = Mathf.Abs(scale.x);
+        }
+        else if (direction > 0)
+        {
+            // 向右移动，正常显示
+            scale.x = -Mathf.Abs(scale.x);
+        }
+        
+        rectTransform.localScale = scale;
     }
     
     
@@ -197,12 +231,14 @@ public class Enemy : MonoBehaviour
         // 重置位置
         rectTransform.anchoredPosition = new Vector2(400f, 0f);
 
-        // 重新根据玩家速度调整敌人的最大速度
+        // 重新根据玩家速度调整敌人的速度，使其与玩家保持一致
         Player player = FindObjectOfType<Player>();
         if (player != null)
         {
             float playerSpeed = player.moveSpeed;
-            maxSpeed = Mathf.Min(6f, playerSpeed); // 使用原始最大速度6f和玩家速度的最小值
+            maxSpeed = Mathf.Abs(playerSpeed); // 使用玩家速度的绝对值
+            minSpeed = maxSpeed; // 确保速度一致性
+            currentSpeed = maxSpeed; // 立即更新当前速度
         }
         
         // 重新初始化敌人

@@ -8,6 +8,7 @@ public class GameManager : MonoBehaviour
     public Player player;
     public Enemy enemy;
     public Button restartButton;
+    public Button changeDirectionButton;
     public TextMeshProUGUI scoreText;
     
     [Header("碰撞检测设置")]
@@ -30,6 +31,11 @@ public class GameManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        if (changeDirectionButton != null)
+        {
+            changeDirectionButton.onClick.AddListener(ChangeDirection);
+        }
     }
     
     void Start()
@@ -61,7 +67,18 @@ public class GameManager : MonoBehaviour
     {
         if (!isGameOver)
         {
+            HandleKeyboardInput();
             CheckCollision();
+        }
+    }
+    
+    // 处理键盘输入（可选，用于测试）
+    private void HandleKeyboardInput()
+    {
+        // 检测空格键或其他按键来改变方向
+        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            ChangeDirection();
         }
     }
     
@@ -115,10 +132,11 @@ public class GameManager : MonoBehaviour
         currentScore = 0;
         Time.timeScale = 1f;
         
-        // 重置玩家位置
+        // 重置玩家位置和方向
         if (player != null)
         {
             player.SetPosition(0f);
+            player.ResetDirection();
         }
         
         // 重置敌人状态
@@ -171,5 +189,13 @@ public class GameManager : MonoBehaviour
     public float GetCollisionDistance()
     {
         return collisionDistance;
+    }
+
+    public void ChangeDirection()
+    {
+        if (player != null)
+        {
+            player.ChangeDirection();
+        }
     }
 }

@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
 
 public class Player : MonoBehaviour
 {
@@ -8,14 +10,26 @@ public class Player : MonoBehaviour
     [Header("玩家设置")]
     public float imageWidth = 100f; // UI Image的宽度
     
+    [Header("无敌状态视觉效果")]
+    public float invincibleBlinkSpeed = 5f; // 无敌状态闪烁速度
+    
     private RectTransform rectTransform;
     private float canvasWidth;
     private float currentDirection = 1f; // 当前移动方向：1为右，-1为左
+    private UnityEngine.UI.Image playerImage; // 玩家的Image组件
+    private Color originalColor; // 原始颜色
     
     void Start()
     {
         // 获取RectTransform组件
         rectTransform = GetComponent<RectTransform>();
+        
+        // 获取Image组件
+        playerImage = GetComponent<UnityEngine.UI.Image>();
+        if (playerImage != null)
+        {
+            originalColor = playerImage.color;
+        }
         
         // 获取Canvas的实际宽度而不是屏幕宽度
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -51,6 +65,28 @@ public class Player : MonoBehaviour
         if (GameManager.Instance != null && !GameManager.Instance.IsGameOver())
         {
             ContinuousMove();
+            UpdateInvincibleVisualEffect();
+        }
+    }
+    
+    // 更新无敌状态的视觉效果
+    private void UpdateInvincibleVisualEffect()
+    {
+        if (GameManager.Instance != null && playerImage != null)
+        {
+            if (GameManager.Instance.IsPlayerInvincible())
+            {
+                // 无敌状态：闪烁效果
+                float alpha = (Mathf.Sin(Time.time * invincibleBlinkSpeed) + 1f) * 0.3f + 0.4f; // 0.4-1.0之间闪烁
+                Color currentColor = originalColor;
+                currentColor.a = alpha;
+                playerImage.color = currentColor;
+            }
+            else
+            {
+                // 正常状态：恢复原始透明度
+                playerImage.color = originalColor;
+            }
         }
     }
     

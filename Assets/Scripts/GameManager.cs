@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
@@ -16,6 +17,8 @@ public class GameManager : MonoBehaviour
     [Header("游戏状态")]
     private bool isGameOver = false;
     private int currentScore = 0;
+    private bool isPlayerInvincible = false; // 玩家无敌状态
+    private float invincibleTimer = 0f; // 无敌计时器
     
     // 单例模式
     public static GameManager Instance { get; private set; }
@@ -67,8 +70,45 @@ public class GameManager : MonoBehaviour
         if (!isGameOver)
         {
             HandleKeyboardInput();
+            HandleInvincibleTimer();
             CheckCollision();
         }
+    }
+    
+    // 处理无敌状态计时器
+    private void HandleInvincibleTimer()
+    {
+        if (isPlayerInvincible && invincibleTimer > 0f)
+        {
+            invincibleTimer -= Time.deltaTime;
+            if (invincibleTimer <= 0f)
+            {
+                isPlayerInvincible = false;
+                Debug.Log("玩家无敌状态结束");
+            }
+        }
+    }
+    
+    // 设置玩家无敌状态
+    public void SetPlayerInvincible(bool invincible, float duration = 0f)
+    {
+        isPlayerInvincible = invincible;
+        if (invincible && duration > 0f)
+        {
+            invincibleTimer = duration;
+            Debug.Log($"玩家进入无敌状态，持续时间：{duration}秒");
+        }
+        else if (!invincible)
+        {
+            invincibleTimer = 0f;
+            Debug.Log("玩家退出无敌状态");
+        }
+    }
+    
+    // 检查玩家是否处于无敌状态
+    public bool IsPlayerInvincible()
+    {
+        return isPlayerInvincible;
     }
     
     // 处理键盘输入（可选，用于测试）
@@ -92,8 +132,8 @@ public class GameManager : MonoBehaviour
     
     private void CheckCollision()
     {
-        // 检查玩家和敌人是否碰撞
-        if (player != null && enemy != null && enemy.IsVisible())
+        // 只有在玩家不是无敌状态且敌人可见时才检测碰撞
+        if (player != null && enemy != null && enemy.IsVisible() && !isPlayerInvincible)
         {
             float playerX = player.GetXPosition();
             float enemyX = enemy.GetXPosition();

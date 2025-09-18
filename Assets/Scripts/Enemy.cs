@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class Enemy : MonoBehaviour
 {
@@ -19,6 +20,11 @@ public class Enemy : MonoBehaviour
     [Header("敌人设置")]
     public float imageWidth = 100f; // UI Image的宽度
     
+    [Header("出场动画设置")]
+    public float spawnAnimationDuration = 1.5f; // 出场动画持续时间
+    public AnimationCurve spawnScaleCurve = AnimationCurve.EaseInOut(0, 0.3f, 1, 1f); // 缩放动画曲线
+    public AnimationCurve spawnAlphaCurve = AnimationCurve.EaseInOut(0, 0f, 1, 1f); // 透明度动画曲线
+    
     private RectTransform rectTransform;
     private float canvasWidth;
     private float currentSpeed;
@@ -34,6 +40,11 @@ public class Enemy : MonoBehaviour
     private float directionChangeTimer = 0f; // 方向变化计时器
     private float currentDirectionChangeTime; // 当前方向变化间隔时间
     
+    // 出场动画相关变量
+    private bool isSpawning = false; // 是否正在播放出场动画
+    private Vector3 originalScale; // 原始缩放值
+    private Color originalColor; // 原始颜色
+    
     void Start()
     {
         // 获取RectTransform组件
@@ -41,6 +52,13 @@ public class Enemy : MonoBehaviour
         
         // 获取Image组件
         enemyImage = GetComponent<UnityEngine.UI.Image>();
+        
+        // 保存原始缩放和颜色
+        originalScale = rectTransform.localScale;
+        if (enemyImage != null)
+        {
+            originalColor = enemyImage.color;
+        }
         
         // 获取Canvas的实际宽度而不是屏幕宽度
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -78,7 +96,7 @@ public class Enemy : MonoBehaviour
             {
                 HandleRespawn();
             }
-            else
+            else if (!isSpawning) // 只有在不播放出场动画时才处理正常逻辑
             {
                 HandleMovement();
                 HandleLifeCycle();
@@ -139,6 +157,78 @@ public class Enemy : MonoBehaviour
         
         // 重置得分标记
         hasScored = false;
+        
+        // 开始出场动画
+        StartSpawnAnimation();
+    }
+    
+    // 开始出场动画
+    private void StartSpawnAnimation()
+    {
+        isSpawning = true;
+        
+        // 通知GameManager玩家进入无敌状态
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SetPlayerInvincible(true, spawnAnimationDuration);
+        }
+        
+        StartCoroutine(PlaySpawnAnimation());
+    }
+    
+    // 播放出场动画协程
+    private IEnumerator PlaySpawnAnimation()
+    {
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < spawnAnimationDuration)
+        {
+            float progress = elapsedTime / spawnAnimationDuration;
+            
+            // 计算当前缩放值
+            float scaleMultiplier = spawnScaleCurve.Evaluate(progress);
+            Vector3 currentScale = originalScale;
+            // 保持x轴的方向性（正负值）
+            currentScale.x = currentScale.x > 0 ? 
+                originalScale.x * scaleMultiplier : 
+                -Mathf.Abs(originalScale.x) * scaleMultiplier;
+            currentScale.y = originalScale.y * scaleMultiplier;
+            rectTransform.localScale = currentScale;
+            
+            // 计算当前透明度
+            if (enemyImage != null)
+            {
+                float alpha = spawnAlphaCurve.Evaluate(progress);
+                Color currentColor = originalColor;
+                currentColor.a = alpha;
+                enemyImage.color = currentColor;
+            }
+            
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+        
+        // 确保最终状态正确
+        rectTransform.localScale = originalScale;
+        if (enemyImage != null)
+        {
+            enemyImage.color = originalColor;
+        }
+        
+        // 动画结束
+        isSpawning = false;
+        
+        // 通知GameManager玩家退出无敌状态
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SetPlayerInvincible(false, 0f);
+        }
+    }
+    
+    // 检查敌人是否正在播放出场动画
+    public bool IsSpawning()
+    {
+        return isSpawning;
     }
     
     private void HandleMovement()
@@ -292,6 +382,6 @@ public class Enemy : MonoBehaviour
     // 检查敌人是否可见
     public bool IsVisible()
     {
-        return enemyImage != null && enemyImage.enabled;
+        return enemyImage != null && enemyImage.enabled && !isSpawning;
     }
 }

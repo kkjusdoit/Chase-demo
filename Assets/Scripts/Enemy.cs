@@ -13,8 +13,8 @@ public class Enemy : MonoBehaviour
     public float respawnDelay = 1f; // 重新激活前的延迟时间
     
     [Header("方向变化设置")]
-    public float minDirectionChangeTime = 3f; // 最小方向变化间隔
-    public float maxDirectionChangeTime = 5f; // 最大方向变化间隔
+    public float minDirectionChangeTime = 2f; // 最小方向变化间隔
+    public float maxDirectionChangeTime = 3f; // 最大方向变化间隔
     
     [Header("敌人设置")]
     public float imageWidth = 100f; // UI Image的宽度
@@ -211,7 +211,7 @@ public class Enemy : MonoBehaviour
             moveDirection = Random.Range(0, 2) == 0 ? -1f : 1f;
             
             // 随机调整速度：加快或减慢10%
-            float speedMultiplier = Random.Range(0, 2) == 0 ? 0.9f : 1.1f; // 90%或110%
+            float speedMultiplier = Random.Range(0, 2) == 0 ? 0.9f : 1.03f; // 90%或110%
             currentSpeed *= speedMultiplier;
             
             // 确保速度不会偏离基础速度太多（限制在原速度的70%-130%范围内）

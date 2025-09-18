@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class GameManager : MonoBehaviour
 {
@@ -9,7 +8,7 @@ public class GameManager : MonoBehaviour
     public Enemy enemy;
     public Button restartButton;
     public Button changeDirectionButton;
-    public TextMeshProUGUI scoreText;
+    public Text scoreText;
     
     [Header("碰撞检测设置")]
     public float collisionDistance = 100f; // 碰撞检测距离

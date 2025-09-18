@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<linker>
+    <!-- 保留基本的Unity核心功能 -->
+    <assembly fullname="UnityEngine.CoreModule" preserve="all"/>
+    <assembly fullname="UnityEngine.UI" preserve="all"/>
+    
+    <!-- 保留您使用的脚本程序集 -->
+    <assembly fullname="Assembly-CSharp" preserve="all"/>
+    
+    <!-- 移除不需要的模块 -->
+    <assembly fullname="UnityEngine.XRModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.VRModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.ARModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.AudioModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.VideoModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.ParticleSystemModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.PhysicsModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.Physics2DModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.TerrainModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.WindModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.VehiclesModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.ClothModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.AIModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.AnimationModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.TimelineModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.DirectorModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityAnalyticsModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.CrashReportingModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.PerformanceReportingModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityConnectModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.TilemapModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.SpriteMaskModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.StreamingModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.SubstanceModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.SubsystemsModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.TerrainPhysicsModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UNETModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UmbraModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityWebRequestModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityWebRequestAudioModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityWebRequestTextureModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.UnityWebRequestWWWModule" preserve="nothing"/>
+    <assembly fullname="UnityEngine.LocalizationModule" preserve="nothing"/>
+    
+    <!-- 移除TextMeshPro相关模块 -->
+    <assembly fullname="Unity.TextMeshPro" preserve="nothing"/>
+    <assembly fullname="UnityEngine.TextRenderingModule" preserve="nothing"/>
+</linker>

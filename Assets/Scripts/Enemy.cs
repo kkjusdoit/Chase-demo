@@ -12,6 +12,10 @@ public class Enemy : MonoBehaviour
     public float maxLifeTime = 8f; // 最大生存时间
     public float respawnDelay = 1f; // 重新激活前的延迟时间
     
+    [Header("方向变化设置")]
+    public float minDirectionChangeTime = 3f; // 最小方向变化间隔
+    public float maxDirectionChangeTime = 5f; // 最大方向变化间隔
+    
     [Header("敌人设置")]
     public float imageWidth = 100f; // UI Image的宽度
     
@@ -25,6 +29,10 @@ public class Enemy : MonoBehaviour
     private float respawnTimer = 0f; // 重生计时器
     private UnityEngine.UI.Image enemyImage; // 敌人的Image组件
     private bool hasScored = false; // 标记当前轮次是否已经得分
+    
+    // 方向变化相关变量
+    private float directionChangeTimer = 0f; // 方向变化计时器
+    private float currentDirectionChangeTime; // 当前方向变化间隔时间
     
     void Start()
     {
@@ -74,6 +82,7 @@ public class Enemy : MonoBehaviour
             {
                 HandleMovement();
                 HandleLifeCycle();
+                HandleDirectionChange();
             }
         }
     }
@@ -113,6 +122,10 @@ public class Enemy : MonoBehaviour
         // 随机生成生存时间并重置计时器
         currentLifeTime = Random.Range(minLifeTime, maxLifeTime);
         lifeTimer = 0f;
+        
+        // 随机生成方向变化时间并重置计时器
+        currentDirectionChangeTime = Random.Range(minDirectionChangeTime, maxDirectionChangeTime);
+        directionChangeTimer = 0f;
         
         // 确保敌人可见
         if (enemyImage != null)
@@ -184,6 +197,37 @@ public class Enemy : MonoBehaviour
         if (lifeTimer >= currentLifeTime)
         {
             StartRespawn();
+        }
+    }
+    
+    private void HandleDirectionChange()
+    {
+        directionChangeTimer += Time.deltaTime;
+        
+        // 如果达到方向变化时间，则随机改变方向
+        if (directionChangeTimer >= currentDirectionChangeTime)
+        {
+            // 随机生成新的移动方向
+            moveDirection = Random.Range(0, 2) == 0 ? -1f : 1f;
+            
+            // 随机调整速度：加快或减慢10%
+            float speedMultiplier = Random.Range(0, 2) == 0 ? 0.9f : 1.1f; // 90%或110%
+            currentSpeed *= speedMultiplier;
+            
+            // 确保速度不会偏离基础速度太多（限制在原速度的70%-130%范围内）
+            Player player = FindObjectOfType<Player>();
+            if (player != null)
+            {
+                float baseSpeed = Mathf.Abs(player.moveSpeed);
+                currentSpeed = Mathf.Clamp(currentSpeed, baseSpeed * 0.7f, baseSpeed * 1.3f);
+            }
+            
+            // 更新sprite的scale
+            UpdateScale(moveDirection);
+            
+            // 重置方向变化计时器并生成新的间隔时间
+            directionChangeTimer = 0f;
+            currentDirectionChangeTime = Random.Range(minDirectionChangeTime, maxDirectionChangeTime);
         }
     }
     

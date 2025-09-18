@@ -12,7 +12,7 @@ public class BuildOptimizer : MonoBehaviour
         
         // 设置构建选项
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
-        buildPlayerOptions.scenes = new[] { "Assets/Scenes/SampleScene.unity" };
+        buildPlayerOptions.scenes = new[] { "Assets/Scenes/MainScene.unity" };
         buildPlayerOptions.locationPathName = "build";
         buildPlayerOptions.target = BuildTarget.WebGL;
         buildPlayerOptions.options = BuildOptions.None;
@@ -51,9 +51,9 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置
-        PlayerSettings.stripEngineCode = true;
-        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
-        PlayerSettings.stripUnusedMeshComponents = true;
+        // PlayerSettings.stripEngineCode = true;
+        // PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
+        // PlayerSettings.stripUnusedMeshComponents = true;
         
         // 脚本编译优化
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.WebGL, ScriptingImplementation.IL2CPP);
@@ -67,11 +67,17 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.SetVirtualRealitySupported(BuildTargetGroup.WebGL, false);
         PlayerSettings.enableInternalProfiler = false;
         
+        // 移除Unity启动画面和Logo
+        PlayerSettings.SplashScreen.show = false;
+        PlayerSettings.SplashScreen.showUnityLogo = false;
+        PlayerSettings.SplashScreen.logos = new PlayerSettings.SplashScreenLogo[0];
+        
         // 进一步的WebGL优化
         try
         {
             PlayerSettings.WebGL.template = "APPLICATION:Minimal"; // 使用最小模板
             PlayerSettings.WebGL.threadsSupport = false; // 禁用线程支持
+            PlayerSettings.WebGL.showDiagnostics = false; // 禁用诊断信息
             
             // 新的Unity版本使用decompressionFallback来控制WASM流式加载
             #if UNITY_2022_1_OR_NEWER
@@ -82,6 +88,8 @@ public class BuildOptimizer : MonoBehaviour
         {
             Debug.LogWarning($"某些WebGL设置可能不支持当前Unity版本: {e.Message}");
         }
+        
+        Debug.Log("Unity品牌元素已移除");
         
         Debug.Log("优化设置已应用");
     }

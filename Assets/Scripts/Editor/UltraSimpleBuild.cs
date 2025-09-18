@@ -13,7 +13,7 @@ public class UltraSimpleBuild : MonoBehaviour
         SetMinimalWebGLSettings();
         
         // 构建
-        string[] scenes = { "Assets/Scenes/SampleScene.unity" };
+        string[] scenes = { "Assets/Scenes/MainScene.unity" };
         BuildPlayerOptions buildOptions = new BuildPlayerOptions
         {
             scenes = scenes,
@@ -44,7 +44,7 @@ public class UltraSimpleBuild : MonoBehaviour
         Debug.Log("设置最小化WebGL优化...");
         
         // 只使用最稳定的设置
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
         PlayerSettings.WebGL.linkerTarget = WebGLLinkerTarget.Wasm;
         PlayerSettings.WebGL.memorySize = 32;
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
@@ -52,8 +52,20 @@ public class UltraSimpleBuild : MonoBehaviour
         
         // 基本优化
         PlayerSettings.stripEngineCode = true;
+        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
+        PlayerSettings.stripUnusedMeshComponents = true;
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         
+        // 移除Unity启动画面和Logo
+        PlayerSettings.SplashScreen.show = false;
+        PlayerSettings.SplashScreen.showUnityLogo = false;
+        PlayerSettings.SplashScreen.logos = new PlayerSettings.SplashScreenLogo[0];
+        
+        // 设置最小WebGL模板
+        PlayerSettings.WebGL.template = "APPLICATION:Minimal";
+        PlayerSettings.WebGL.showDiagnostics = false;
+        
+        Debug.Log("Unity品牌元素已移除");
         Debug.Log("最小化设置完成");
     }
     

@@ -1,8 +1,7 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  push:
-    branches: [ main, master ]
+  push:  # 任何分支推送都会触发
   workflow_dispatch:
 
 jobs:
@@ -18,7 +17,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: chase-game # 你可以修改这个项目名称
+          # 根据分支名称设置不同的项目名称
+          projectName: ${{ github.ref == 'refs/heads/main' && 'chase-game' || 'chase-game-dev' }}
           directory: build
           # 可选: 如果你想要自定义域名
           # gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
     public Button restartButton;
     public Button changeDirectionButton;
     public Text scoreText;
+    public Text maxScoreText;
     
     [Header("碰撞检测设置")]
     public float collisionDistance = 100f; // 碰撞检测距离
@@ -17,8 +18,12 @@ public class GameManager : MonoBehaviour
     [Header("游戏状态")]
     private bool isGameOver = false;
     private int currentScore = 0;
+    private int bestScore = 0; // 最佳分数
     private bool isPlayerInvincible = false; // 玩家无敌状态
     private float invincibleTimer = 0f; // 无敌计时器
+    
+    // PlayerPrefs键名
+    private const string BEST_SCORE_KEY = "BestScore";
     
     // 单例模式
     public static GameManager Instance { get; private set; }
@@ -126,8 +131,30 @@ public class GameManager : MonoBehaviour
         isGameOver = false;
         currentScore = 0;
         Time.timeScale = 1f;
+        
+        // 加载最佳分数
+        LoadBestScore();
+        
+        // 隐藏重启按钮
+        SetRestartButtonVisible(false);
+        
         UpdateScoreDisplay();
         Debug.Log("游戏初始化完成");
+    }
+    
+    // 加载最佳分数
+    private void LoadBestScore()
+    {
+        bestScore = PlayerPrefs.GetInt(BEST_SCORE_KEY, 0);
+        Debug.Log($"加载最佳分数：{bestScore}");
+    }
+    
+    // 保存最佳分数
+    private void SaveBestScore()
+    {
+        PlayerPrefs.SetInt(BEST_SCORE_KEY, bestScore);
+        PlayerPrefs.Save();
+        Debug.Log($"保存最佳分数：{bestScore}");
     }
     
     private void CheckCollision()
@@ -152,14 +179,34 @@ public class GameManager : MonoBehaviour
         
         isGameOver = true;
         
+        // 检查并更新最佳分数
+        CheckAndUpdateBestScore();
+        
+        // 显示重启按钮
+        SetRestartButtonVisible(true);
+        
         // 暂停游戏
         Time.timeScale = 0f;
         
         // 输出游戏结束信息
-        Debug.Log($"游戏结束！玩家与敌人发生碰撞！最终分数：{currentScore}");
+        Debug.Log($"游戏结束！玩家与敌人发生碰撞！最终分数：{currentScore}，最佳分数：{bestScore}");
         
         // 这里可以添加游戏结束UI的显示逻辑
         // 例如：显示游戏结束面板、播放音效等
+    }
+    
+    // 检查并更新最佳分数
+    private void CheckAndUpdateBestScore()
+    {
+        if (currentScore > bestScore)
+        {
+            bestScore = currentScore;
+            SaveBestScore();
+            Debug.Log($"新纪录！最佳分数更新为：{bestScore}");
+        }
+        
+        // 更新UI显示
+        UpdateScoreDisplay();
     }
     
     public void RestartGame()
@@ -170,6 +217,9 @@ public class GameManager : MonoBehaviour
         isGameOver = false;
         currentScore = 0;
         Time.timeScale = 1f;
+        
+        // 隐藏重启按钮
+        SetRestartButtonVisible(false);
         
         // 重置玩家位置和方向
         if (player != null)
@@ -204,12 +254,23 @@ public class GameManager : MonoBehaviour
         {
             scoreText.text = "Score: " + currentScore;
         }
+        
+        if (maxScoreText != null)
+        {
+            maxScoreText.text = "Best: " + bestScore;
+        }
     }
     
     // 获取当前分数
     public int GetCurrentScore()
     {
         return currentScore;
+    }
+    
+    // 获取最佳分数
+    public int GetBestScore()
+    {
+        return bestScore;
     }
     
     // 检查游戏是否结束
@@ -235,6 +296,16 @@ public class GameManager : MonoBehaviour
         if (player != null)
         {
             player.ChangeDirection();
+        }
+    }
+    
+    // 控制重启按钮的显示和隐藏
+    private void SetRestartButtonVisible(bool visible)
+    {
+        if (restartButton != null)
+        {
+            restartButton.gameObject.SetActive(visible);
+            Debug.Log($"重启按钮{(visible ? "显示" : "隐藏")}");
         }
     }
 }

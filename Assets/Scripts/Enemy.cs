@@ -60,18 +60,28 @@ public class Enemy : MonoBehaviour
             originalColor = enemyImage.color;
         }
         
-        // 获取Canvas的实际宽度而不是屏幕宽度
+        // 获取Canvas的实际宽度，考虑不同的缩放模式
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas != null)
         {
             RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-            canvasWidth = canvasRect.rect.width;
+            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
+            
+            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                // 使用参考分辨率的宽度，这样在不同设备上保持一致
+                canvasWidth = scaler.referenceResolution.x;
+            }
+            else
+            {
+                canvasWidth = canvasRect.rect.width;
+            }
         }
         else
         {
-            // 如果找不到Canvas，使用屏幕宽度作为备用
-            canvasWidth = Screen.width;
-            Debug.LogWarning("Enemy: 未找到Canvas，使用Screen.width作为备用");
+            // 如果找不到Canvas，使用默认宽度
+            canvasWidth = 1080f; // 使用参考分辨率宽度
+            Debug.LogWarning("Enemy: 未找到Canvas，使用默认宽度1080");
         }
         
         // 根据玩家速度调整敌人的速度，使其与玩家保持一致

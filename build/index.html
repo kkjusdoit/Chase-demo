@@ -4,25 +4,97 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity Web Player | Chase</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      #unity-canvas {
+        display: block;
+        background: #231F20;
+      }
+      /* 桌面端默认大小 */
+      @media (min-width: 768px) {
+        #unity-canvas {
+          width: 540px !important;
+          height: 960px !important;
+          max-height: 90vh;
+          max-width: 90vw;
+        }
+      }
+      /* 移动端全屏 */
+      @media (max-width: 767px) {
+        body {
+          min-height: 100vh;
+        }
+        #unity-canvas {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+        }
+      }
+    </style>
   </head>
-  <body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <canvas id="unity-canvas" width=1080 height=1920 tabindex="-1" style="width: 1080px; height: 1920px; background: #231F20"></canvas>
+  <body>
+    <canvas id="unity-canvas" width=1080 height=1920 tabindex="-1"></canvas>
     <script src="Build/40231794539f4be3c7a8485d5d186c4d.loader.js"></script>
     <script>
+      // 添加移动端meta标签
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
         var meta = document.createElement('meta');
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
         document.getElementsByTagName('head')[0].appendChild(meta);
-
-        var canvas = document.querySelector("#unity-canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        canvas.style.position = "fixed";
-
-        document.body.style.textAlign = "left";
       }
+      
+      // 智能调整Canvas大小
+      function adjustCanvasSize() {
+        var canvas = document.querySelector("#unity-canvas");
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        var isSmallScreen = window.innerWidth <= 767;
+        
+        if (isMobile || isSmallScreen) {
+          // 移动端：全屏显示
+          canvas.style.position = "fixed";
+          canvas.style.top = "0";
+          canvas.style.left = "0";
+          canvas.style.width = "100vw";
+          canvas.style.height = "100vh";
+        } else {
+          // 桌面端：合适的大小，保持9:16比例
+          var maxHeight = window.innerHeight * 0.9;
+          var maxWidth = window.innerWidth * 0.9;
+          var aspectRatio = 9 / 16; // 宽高比
+          
+          var canvasHeight = Math.min(maxHeight, 960);
+          var canvasWidth = canvasHeight * aspectRatio;
+          
+          if (canvasWidth > maxWidth) {
+            canvasWidth = maxWidth;
+            canvasHeight = canvasWidth / aspectRatio;
+          }
+          
+          canvas.style.position = "static";
+          canvas.style.width = canvasWidth + "px";
+          canvas.style.height = canvasHeight + "px";
+        }
+      }
+      
+      // 初始调整
+      adjustCanvasSize();
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', adjustCanvasSize);
+      window.addEventListener('orientationchange', function() {
+        setTimeout(adjustCanvasSize, 100);
+      });
 
       createUnityInstance(document.querySelector("#unity-canvas"), {
         arguments: [],

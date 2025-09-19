@@ -7,6 +7,8 @@ public class GameManager : MonoBehaviour
     [Header("游戏对象引用")]
     public Player player;
     public Enemy enemy;
+
+    public Image bonusImage;
     public Button restartButton;
     public Button changeDirectionButton;
     public Text scoreText;

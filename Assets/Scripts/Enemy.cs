@@ -35,6 +35,8 @@ public class Enemy : MonoBehaviour
     private float respawnTimer = 0f; // 重生计时器
     private UnityEngine.UI.Image enemyImage; // 敌人的Image组件
     private bool hasScored = false; // 标记当前轮次是否已经得分
+    private Canvas parentCanvas; // 父级Canvas引用
+    private float lastCanvasWidth; // 上一次的Canvas宽度，用于检测变化
     
     // 方向变化相关变量
     private float directionChangeTimer = 0f; // 方向变化计时器
@@ -60,29 +62,9 @@ public class Enemy : MonoBehaviour
             originalColor = enemyImage.color;
         }
         
-        // 获取Canvas的实际宽度，考虑不同的缩放模式
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas != null)
-        {
-            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
-            
-            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
-            {
-                // 使用参考分辨率的宽度，这样在不同设备上保持一致
-                canvasWidth = scaler.referenceResolution.x;
-            }
-            else
-            {
-                canvasWidth = canvasRect.rect.width;
-            }
-        }
-        else
-        {
-            // 如果找不到Canvas，使用默认宽度
-            canvasWidth = 1080f; // 使用参考分辨率宽度
-            Debug.LogWarning("Enemy: 未找到Canvas，使用默认宽度1080");
-        }
+        // 获取Canvas引用并初始化宽度
+        parentCanvas = GetComponentInParent<Canvas>();
+        UpdateCanvasWidth();
         
         // 根据玩家速度调整敌人的速度，使其与玩家保持一致
         Player player = FindObjectOfType<Player>();
@@ -102,6 +84,9 @@ public class Enemy : MonoBehaviour
         // 只有在游戏未结束时才处理敌人逻辑
         if (GameManager.Instance != null && !GameManager.Instance.IsGameOver())
         {
+            // 检查Canvas宽度是否发生变化
+            UpdateCanvasWidth();
+            
             if (isRespawning)
             {
                 HandleRespawn();
@@ -112,6 +97,30 @@ public class Enemy : MonoBehaviour
                 HandleLifeCycle();
                 HandleDirectionChange();
             }
+        }
+    }
+    
+    // 更新Canvas宽度
+    private void UpdateCanvasWidth()
+    {
+        if (parentCanvas != null)
+        {
+            RectTransform canvasRect = parentCanvas.GetComponent<RectTransform>();
+            float currentWidth = canvasRect.rect.width;
+            
+            // 如果宽度发生变化，更新并记录
+            if (Mathf.Abs(currentWidth - lastCanvasWidth) > 0.1f)
+            {
+                canvasWidth = currentWidth;
+                lastCanvasWidth = currentWidth;
+                Debug.Log($"Enemy: Canvas宽度更新为 {canvasWidth}");
+            }
+        }
+        else
+        {
+            // 如果找不到Canvas，使用默认宽度
+            canvasWidth = 1080f;
+            Debug.LogWarning("Enemy: 未找到Canvas，使用默认宽度1080");
         }
     }
     

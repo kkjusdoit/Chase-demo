@@ -18,6 +18,8 @@ public class Player : MonoBehaviour
     private float currentDirection = 1f; // 当前移动方向：1为右，-1为左
     private UnityEngine.UI.Image playerImage; // 玩家的Image组件
     private Color originalColor; // 原始颜色
+    private Canvas parentCanvas; // 父级Canvas引用
+    private float lastCanvasWidth; // 上一次的Canvas宽度，用于检测变化
     
     void Start()
     {
@@ -31,29 +33,9 @@ public class Player : MonoBehaviour
             originalColor = playerImage.color;
         }
         
-        // 获取Canvas的实际宽度，考虑不同的缩放模式
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas != null)
-        {
-            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
-            
-            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
-            {
-                // 使用参考分辨率的宽度，这样在不同设备上保持一致
-                canvasWidth = scaler.referenceResolution.x;
-            }
-            else
-            {
-                canvasWidth = canvasRect.rect.width;
-            }
-        }
-        else
-        {
-            // 如果找不到Canvas，使用默认宽度
-            canvasWidth = 1080f; // 使用参考分辨率宽度
-            Debug.LogWarning("未找到Canvas，使用默认宽度1080");
-        }
+        // 获取Canvas引用并初始化宽度
+        parentCanvas = GetComponentInParent<Canvas>();
+        UpdateCanvasWidth();
         
         // 设置初始位置在屏幕中央
         Vector3 startPos = rectTransform.anchoredPosition;
@@ -74,8 +56,34 @@ public class Player : MonoBehaviour
         // 只有在游戏未结束时才持续移动
         if (GameManager.Instance != null && !GameManager.Instance.IsGameOver())
         {
+            // 检查Canvas宽度是否发生变化
+            UpdateCanvasWidth();
             ContinuousMove();
             UpdateInvincibleVisualEffect();
+        }
+    }
+    
+    // 更新Canvas宽度
+    private void UpdateCanvasWidth()
+    {
+        if (parentCanvas != null)
+        {
+            RectTransform canvasRect = parentCanvas.GetComponent<RectTransform>();
+            float currentWidth = canvasRect.rect.width;
+            
+            // 如果宽度发生变化，更新并记录
+            if (Mathf.Abs(currentWidth - lastCanvasWidth) > 0.1f)
+            {
+                canvasWidth = currentWidth;
+                lastCanvasWidth = currentWidth;
+                Debug.Log($"Player: Canvas宽度更新为 {canvasWidth}");
+            }
+        }
+        else
+        {
+            // 如果找不到Canvas，使用默认宽度
+            canvasWidth = 1080f;
+            Debug.LogWarning("Player: 未找到Canvas，使用默认宽度1080");
         }
     }
     

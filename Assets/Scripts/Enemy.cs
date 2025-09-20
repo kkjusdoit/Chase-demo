@@ -25,6 +25,12 @@ public class Enemy : MonoBehaviour
     public AnimationCurve spawnScaleCurve = AnimationCurve.EaseInOut(0, 0.3f, 1, 1f); // 缩放动画曲线
     public AnimationCurve spawnAlphaCurve = AnimationCurve.EaseInOut(0, 0f, 1, 1f); // 透明度动画曲线
     
+    [Header("Bonus道具生成设置")]
+    public int bonusCount = 3; // 每次生成的bonus道具数量
+    public float bonusSpacing = 200f; // bonus道具之间的间距
+    public GameObject bonusPrefab; // bonus道具预制体，需要在Inspector中指定
+    public float bonusRandomOffset = 50f; // bonus位置的随机偏移范围
+    
     private RectTransform rectTransform;
     private float canvasWidth;
     private float currentSpeed;
@@ -34,7 +40,6 @@ public class Enemy : MonoBehaviour
     private bool isRespawning = false; // 是否正在重生过程中
     private float respawnTimer = 0f; // 重生计时器
     private UnityEngine.UI.Image enemyImage; // 敌人的Image组件
-    private bool hasScored = false; // 标记当前轮次是否已经得分
     private Canvas parentCanvas; // 父级Canvas引用
     private float lastCanvasWidth; // 上一次的Canvas宽度，用于检测变化
     
@@ -66,14 +71,8 @@ public class Enemy : MonoBehaviour
         parentCanvas = GetComponentInParent<Canvas>();
         UpdateCanvasWidth();
         
-        // 根据玩家速度调整敌人的速度，使其与玩家保持一致
-        Player player = FindObjectOfType<Player>();
-        if (player != null)
-        {
-            float playerSpeed = player.moveSpeed;
-            maxSpeed = Mathf.Abs(playerSpeed); // 使用玩家速度的绝对值
-            minSpeed = maxSpeed; // 最小速度也设为相同值，确保一致性
-        }
+        // 根据玩家的动态速度调整敌人的速度，使其与玩家保持一致
+        UpdateSpeedFromPlayer();
         
         // 随机初始化
         InitializeRandomly(true);
@@ -113,7 +112,8 @@ public class Enemy : MonoBehaviour
             {
                 canvasWidth = currentWidth;
                 lastCanvasWidth = currentWidth;
-                Debug.Log($"Enemy: Canvas宽度更新为 {canvasWidth}");
+                UpdateSpeedFromPlayer(); // 重新计算移动速度
+                Debug.Log($"Enemy: Canvas宽度更新为 {canvasWidth}，重新计算速度");
             }
         }
         else
@@ -124,31 +124,56 @@ public class Enemy : MonoBehaviour
         }
     }
     
+    // 从玩家获取动态计算的移动速度
+    private void UpdateSpeedFromPlayer()
+    {
+        Player player = FindObjectOfType<Player>();
+        if (player != null)
+        {
+            float playerSpeed = player.GetMoveSpeed();
+            maxSpeed = playerSpeed;
+            minSpeed = playerSpeed;
+            currentSpeed = playerSpeed;
+            Debug.Log($"Enemy: 从Player获取速度 {playerSpeed}");
+        }
+        else
+        {
+            // 如果找不到玩家，使用默认速度
+            currentSpeed = 4f;
+            Debug.LogWarning("Enemy: 未找到Player，使用默认速度4");
+        }
+    }
+    
     private void InitializeRandomly(bool isFirst = false)
     {
-        // 随机生成初始位置（在Canvas宽度范围内）
-        float halfImageWidth = imageWidth * 0.5f;
-        float minX = -canvasWidth * 0.5f + halfImageWidth;
-        float maxX = canvasWidth * 0.5f - halfImageWidth;
-        
+        // 获取玩家当前位置
+        Player player = FindObjectOfType<Player>();
         Vector3 randomPos = rectTransform.anchoredPosition;
-        randomPos.x = Random.Range(minX, maxX);
-        randomPos.x = 400f;
+        
+        if (player != null)
+        {
+            float playerX = player.GetXPosition();
+            
+            // 随机选择在玩家左边或右边300单位
+            bool spawnOnLeft = Random.Range(0, 2) == 0;
+            randomPos.x = playerX + (spawnOnLeft ? -300f : 300f);
+            
+            Debug.Log($"Enemy重生位置：玩家在{playerX}，Enemy在{randomPos.x}（距离300单位）");
+        }
+        else
+        {
+            // 如果找不到玩家，使用默认位置
+            randomPos.x = 400f;
+            Debug.LogWarning("未找到Player，使用默认位置400");
+        }
+        
         if (isFirst)
         {
             rectTransform.anchoredPosition = randomPos;
         }
         
         // 设置移动速度与玩家一致
-        Player player = FindObjectOfType<Player>();
-        if (player != null)
-        {
-            currentSpeed = player.moveSpeed;
-        }
-        else
-        {
-            currentSpeed = Random.Range(minSpeed, maxSpeed); // 备用方案
-        }
+        UpdateSpeedFromPlayer();
         
         // 随机生成移动方向
         moveDirection = Random.Range(0, 2) == 0 ? -1f : 1f;
@@ -174,11 +199,91 @@ public class Enemy : MonoBehaviour
         isRespawning = false;
         respawnTimer = 0f;
         
-        // 重置得分标记
-        hasScored = false;
+        // 生成bonus道具
+        SpawnBonuses();
         
         // 开始出场动画
         StartSpawnAnimation();
+    }
+    
+    // 生成bonus道具
+    private void SpawnBonuses()
+    {
+        if (bonusPrefab == null || GameManager.Instance == null)
+        {
+            Debug.LogWarning("bonusPrefab未设置或GameManager不存在，无法生成bonus道具");
+            return;
+        }
+        
+        // 清理旧的bonus道具
+        GameManager.Instance.ClearAllBonuses();
+        
+        // 根据屏幕宽度和bonus数量动态计算间距
+        float usableWidth = canvasWidth * 0.8f; // 使用屏幕宽度的80%，留出边距
+        float dynamicSpacing;
+        
+        if (bonusCount <= 1)
+        {
+            dynamicSpacing = 0f; // 只有一个bonus时不需要间距
+        }
+        else
+        {
+            dynamicSpacing = usableWidth / (bonusCount - 1); // 平均分布
+        }
+        
+        // 计算起始位置（屏幕中心向左偏移）
+        float startX = -usableWidth * 0.5f;
+        
+        Debug.Log($"动态生成{bonusCount}个bonus道具，屏幕宽度：{canvasWidth}，可用宽度：{usableWidth}，计算间距：{dynamicSpacing}，起始位置：{startX}");
+        
+        // 生成bonus道具
+        for (int i = 0; i < bonusCount; i++)
+        {
+            // 创建bonus道具
+            GameObject bonusObj = Instantiate(bonusPrefab, transform.parent);
+            bonusObj.SetActive(true);
+            
+            // 计算bonus位置：在屏幕宽度内均匀分布
+            float bonusX;
+            if (bonusCount == 1)
+            {
+                // 只有一个bonus，放在屏幕中心
+                bonusX = 0f;
+            }
+            else
+            {
+                // 多个bonus：在屏幕宽度内均匀分布
+                bonusX = startX + i * dynamicSpacing;
+            }
+            
+            // 添加随机偏移
+            float originalX = bonusX;
+            bonusX += Random.Range(-bonusRandomOffset, bonusRandomOffset);
+            
+            Debug.Log($"准备生成bonus {i + 1}，原始位置：{originalX:F1}，随机偏移后：{bonusX:F1}");
+            
+            // 获取bonus脚本组件并初始化
+            Bonus bonusScript = bonusObj.GetComponent<Bonus>();
+            if (bonusScript != null)
+            {
+                // 只设置位置，不需要方向（因为bonus是静态的）
+                bonusScript.Initialize(bonusX);
+            }
+            else
+            {
+                // 如果没有Bonus脚本，直接设置位置
+                RectTransform bonusRect = bonusObj.GetComponent<RectTransform>();
+                if (bonusRect != null)
+                {
+                    Vector3 bonusPos = bonusRect.anchoredPosition;
+                    bonusPos.x = bonusX;
+                    bonusRect.anchoredPosition = bonusPos;
+                    Debug.Log($"直接设置bonus位置：{bonusX}，实际位置：{bonusRect.anchoredPosition.x}");
+                }
+            }
+            
+            Debug.Log($"生成静态bonus道具 {i + 1}/{bonusCount} 目标位置：{bonusX}");
+        }
     }
     
     // 开始出场动画
@@ -327,7 +432,7 @@ public class Enemy : MonoBehaviour
             Player player = FindObjectOfType<Player>();
             if (player != null)
             {
-                float baseSpeed = Mathf.Abs(player.moveSpeed);
+                float baseSpeed = player.GetMoveSpeed();
                 currentSpeed = Mathf.Clamp(currentSpeed, baseSpeed * 0.7f, baseSpeed * 1.3f);
             }
             
@@ -342,12 +447,7 @@ public class Enemy : MonoBehaviour
     
     private void StartRespawn()
     {
-        // 如果玩家成功躲过这一轮，通过GameManager增加分数
-        if (!hasScored && GameManager.Instance != null)
-        {
-            GameManager.Instance.AddScore(1);
-            hasScored = true;
-        }
+        // 移除原有的自动加分逻辑，现在只通过bonus道具加分
         
         // 隐藏敌人（通过禁用Image组件）
         if (enemyImage != null)
@@ -378,23 +478,19 @@ public class Enemy : MonoBehaviour
         return rectTransform.anchoredPosition.x;
     }
     
+    // 获取当前移动速度（供GameManager显示使用）
+    public float GetCurrentSpeed()
+    {
+        return currentSpeed;
+    }
+    
     // 重置敌人状态的方法（由GameManager调用）
     public void ResetEnemy()
     {
-        // 重置位置
-        rectTransform.anchoredPosition = new Vector2(400f, 0f);
-
-        // 重新根据玩家速度调整敌人的速度，使其与玩家保持一致
-        Player player = FindObjectOfType<Player>();
-        if (player != null)
-        {
-            float playerSpeed = player.moveSpeed;
-            maxSpeed = Mathf.Abs(playerSpeed); // 使用玩家速度的绝对值
-            minSpeed = maxSpeed; // 确保速度一致性
-            currentSpeed = maxSpeed; // 立即更新当前速度
-        }
+        // 重新根据玩家的动态速度调整敌人的速度，使其与玩家保持一致
+        UpdateSpeedFromPlayer();
         
-        // 重新初始化敌人
+        // 重新初始化敌人（使用距离player 300单位的逻辑）
         InitializeRandomly(true);
     }
     

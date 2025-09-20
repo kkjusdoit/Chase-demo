@@ -5,7 +5,8 @@ using System.Collections;
 public class Player : MonoBehaviour
 {
     [Header("移动设置")]
-    public float moveSpeed = 4f; // 移动速度
+    public float moveSpeedRatio = 0.004f; // 移动速度比例系数（相对于屏幕宽度）
+    private float moveSpeed; // 实际移动速度，根据屏幕宽度计算
     
     [Header("玩家设置")]
     public float imageWidth = 100f; // UI Image的宽度
@@ -36,6 +37,9 @@ public class Player : MonoBehaviour
         // 获取Canvas引用并初始化宽度
         parentCanvas = GetComponentInParent<Canvas>();
         UpdateCanvasWidth();
+        
+        // 根据屏幕宽度计算移动速度
+        CalculateMoveSpeed();
         
         // 设置初始位置在屏幕中央
         Vector3 startPos = rectTransform.anchoredPosition;
@@ -76,15 +80,30 @@ public class Player : MonoBehaviour
             {
                 canvasWidth = currentWidth;
                 lastCanvasWidth = currentWidth;
-                Debug.Log($"Player: Canvas宽度更新为 {canvasWidth}");
+                CalculateMoveSpeed(); // 重新计算移动速度
+                Debug.Log($"Player: Canvas宽度更新为 {canvasWidth}，新移动速度：{moveSpeed}");
             }
         }
         else
         {
             // 如果找不到Canvas，使用默认宽度
             canvasWidth = 1080f;
+            CalculateMoveSpeed();
             Debug.LogWarning("Player: 未找到Canvas，使用默认宽度1080");
         }
+    }
+    
+    // 根据屏幕宽度计算移动速度
+    private void CalculateMoveSpeed()
+    {
+        moveSpeed = canvasWidth * moveSpeedRatio;
+        Debug.Log($"Player: 计算移动速度 = {canvasWidth} × {moveSpeedRatio} = {moveSpeed}");
+    }
+    
+    // 获取当前移动速度（供其他脚本使用）
+    public float GetMoveSpeed()
+    {
+        return moveSpeed;
     }
     
     // 更新无敌状态的视觉效果

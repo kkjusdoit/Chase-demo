@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
@@ -8,14 +9,16 @@ public class GameManager : MonoBehaviour
     public Player player;
     public Enemy enemy;
 
-    public Image bonusImage;
     public Button restartButton;
     public Button changeDirectionButton;
     public Text scoreText;
     public Text maxScoreText;
+    public Text enmeySpeedText;
+    public Text playerSpeedText;
     
     [Header("碰撞检测设置")]
     public float collisionDistance = 100f; // 碰撞检测距离
+    public float bonusCollisionDistance = 70f; // bonus碰撞检测距离
     
     [Header("游戏状态")]
     private bool isGameOver = false;
@@ -23,6 +26,11 @@ public class GameManager : MonoBehaviour
     private int bestScore = 0; // 最佳分数
     private bool isPlayerInvincible = false; // 玩家无敌状态
     private float invincibleTimer = 0f; // 无敌计时器
+
+
+    
+    [Header("Bonus系统")]
+    private List<GameObject> activeBonuses = new List<GameObject>(); // 活跃的bonus道具列表
     
     // PlayerPrefs键名
     private const string BEST_SCORE_KEY = "BestScore";
@@ -79,7 +87,98 @@ public class GameManager : MonoBehaviour
             HandleKeyboardInput();
             HandleInvincibleTimer();
             CheckCollision();
+            CheckBonusCollisions(); // 检查bonus碰撞
+            UpdateSpeedDisplay(); // 实时更新速度显示
         }
+    }
+    
+    // 实时更新速度显示
+    private void UpdateSpeedDisplay()
+    {
+        // 显示玩家速度
+        if (playerSpeedText != null && player != null)
+        {
+            float playerSpeed = player.GetMoveSpeed();
+            playerSpeedText.text = $"Player Speed: {playerSpeed:F2}";
+        }
+        
+        // 显示敌人速度
+        if (enmeySpeedText != null && enemy != null)
+        {
+            float enemySpeed = enemy.GetCurrentSpeed();
+            enmeySpeedText.text = $"Enemy Speed: {enemySpeed:F2}";
+        }
+    }
+    
+    // 检查bonus道具碰撞
+    private void CheckBonusCollisions()
+    {
+        if (player == null) return;
+        
+        float playerX = player.GetXPosition();
+        
+        // 检查所有活跃的bonus道具
+        for (int i = activeBonuses.Count - 1; i >= 0; i--)
+        {
+            if (activeBonuses[i] != null)
+            {
+                RectTransform bonusRect = activeBonuses[i].GetComponent<RectTransform>();
+                if (bonusRect != null)
+                {
+                    float bonusX = bonusRect.anchoredPosition.x;
+                    
+                    // 检测碰撞
+                    if (Mathf.Abs(playerX - bonusX) < bonusCollisionDistance)
+                    {
+                        // 收集bonus道具
+                        CollectBonus(activeBonuses[i]);
+                        activeBonuses.RemoveAt(i);
+                    }
+                }
+            }
+            else
+            {
+                // 移除空引用
+                activeBonuses.RemoveAt(i);
+            }
+        }
+    }
+    
+    // 收集bonus道具
+    private void CollectBonus(GameObject bonus)
+    {
+        if (bonus != null)
+        {
+            // 加分
+            currentScore += 1;
+            UpdateScoreDisplay();
+            Debug.Log($"收集到bonus道具！当前分数：{currentScore}");
+            
+            // 销毁bonus道具
+            Destroy(bonus);
+        }
+    }
+    
+    // 注册bonus道具
+    public void RegisterBonus(GameObject bonus)
+    {
+        if (bonus != null && !activeBonuses.Contains(bonus))
+        {
+            activeBonuses.Add(bonus);
+        }
+    }
+    
+    // 清理所有bonus道具
+    public void ClearAllBonuses()
+    {
+        foreach (GameObject bonus in activeBonuses)
+        {
+            if (bonus != null)
+            {
+                Destroy(bonus);
+            }
+        }
+        activeBonuses.Clear();
     }
     
     // 处理无敌状态计时器
@@ -140,6 +239,9 @@ public class GameManager : MonoBehaviour
         // 隐藏重启按钮
         SetRestartButtonVisible(false);
         
+        // 清理所有bonus道具
+        ClearAllBonuses();
+        
         UpdateScoreDisplay();
         Debug.Log("游戏初始化完成");
     }
@@ -190,6 +292,9 @@ public class GameManager : MonoBehaviour
         // 暂停游戏
         Time.timeScale = 0f;
         
+        // 清理所有bonus道具
+        ClearAllBonuses();
+        
         // 输出游戏结束信息
         Debug.Log($"游戏结束！玩家与敌人发生碰撞！最终分数：{currentScore}，最佳分数：{bestScore}");
         
@@ -223,6 +328,9 @@ public class GameManager : MonoBehaviour
         // 隐藏重启按钮
         SetRestartButtonVisible(false);
         
+        // 清理所有bonus道具
+        ClearAllBonuses();
+        
         // 重置玩家位置和方向
         if (player != null)
         {
@@ -240,13 +348,14 @@ public class GameManager : MonoBehaviour
         UpdateScoreDisplay();
     }
     
+    // 移除原有的自动加分逻辑，现在只通过bonus道具加分
     public void AddScore(int points = 1)
     {
+        // 这个方法保留但不再自动调用，只用于bonus道具加分
         if (!isGameOver)
         {
             currentScore += points;
             UpdateScoreDisplay();
-            Debug.Log($"玩家躲过一轮攻击！当前分数：{currentScore}");
         }
     }
     

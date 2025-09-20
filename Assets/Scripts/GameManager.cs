@@ -9,7 +9,7 @@ public class GameManager : MonoBehaviour
     public Player player;
     public Enemy enemy;
 
-    public Button restartButton;
+    public Button restartFullScreenButton;
     public Button changeDirectionButton;
     public Text scoreText;
     public Text maxScoreText;
@@ -60,20 +60,20 @@ public class GameManager : MonoBehaviour
         InitializeGame();
         
         // 绑定重启按钮事件
-        if (restartButton != null)
+        if (restartFullScreenButton != null)
         {
-            restartButton.onClick.AddListener(RestartGame);
+            restartFullScreenButton.onClick.AddListener(RestartGame);
         }
         
         // 自动查找游戏对象（如果没有手动分配）
         if (player == null)
         {
-            player = FindObjectOfType<Player>();
+            player = FindFirstObjectByType<Player>();
         }
         
         if (enemy == null)
         {
-            enemy = FindObjectOfType<Enemy>();
+            enemy = FindFirstObjectByType<Enemy>();
         }
         
         // 更新分数显示
@@ -237,7 +237,7 @@ public class GameManager : MonoBehaviour
         LoadBestScore();
         
         // 隐藏重启按钮
-        SetRestartButtonVisible(false);
+        SetRestartFullScreenButtonVisible(false);
         
         // 清理所有bonus道具
         ClearAllBonuses();
@@ -287,7 +287,7 @@ public class GameManager : MonoBehaviour
         CheckAndUpdateBestScore();
         
         // 显示重启按钮
-        SetRestartButtonVisible(true);
+        SetRestartFullScreenButtonVisible(true);
         
         // 暂停游戏
         Time.timeScale = 0f;
@@ -326,7 +326,7 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         
         // 隐藏重启按钮
-        SetRestartButtonVisible(false);
+        SetRestartFullScreenButtonVisible(false);
         
         // 清理所有bonus道具
         ClearAllBonuses();
@@ -411,12 +411,12 @@ public class GameManager : MonoBehaviour
     }
     
     // 控制重启按钮的显示和隐藏
-    private void SetRestartButtonVisible(bool visible)
+    private void SetRestartFullScreenButtonVisible(bool visible)
     {
-        if (restartButton != null)
+        if (restartFullScreenButton != null)
         {
-            restartButton.gameObject.SetActive(visible);
-            Debug.Log($"重启按钮{(visible ? "显示" : "隐藏")}");
+            restartFullScreenButton.gameObject.SetActive(visible);
+            Debug.Log($"重启全屏按钮{(visible ? "显示" : "隐藏")}");
         }
     }
 }

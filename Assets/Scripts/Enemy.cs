@@ -127,7 +127,7 @@ public class Enemy : MonoBehaviour
     // 从玩家获取动态计算的移动速度
     private void UpdateSpeedFromPlayer()
     {
-        Player player = FindObjectOfType<Player>();
+        Player player = FindFirstObjectByType<Player>();
         if (player != null)
         {
             float playerSpeed = player.GetMoveSpeed();
@@ -147,7 +147,7 @@ public class Enemy : MonoBehaviour
     private void InitializeRandomly(bool isFirst = false)
     {
         // 获取玩家当前位置
-        Player player = FindObjectOfType<Player>();
+        Player player = FindFirstObjectByType<Player>();
         Vector3 randomPos = rectTransform.anchoredPosition;
         
         if (player != null)
@@ -429,7 +429,7 @@ public class Enemy : MonoBehaviour
             currentSpeed *= speedMultiplier;
             
             // 确保速度不会偏离基础速度太多（限制在原速度的70%-130%范围内）
-            Player player = FindObjectOfType<Player>();
+            Player player = FindFirstObjectByType<Player>();
             if (player != null)
             {
                 float baseSpeed = player.GetMoveSpeed();

@@ -13,7 +13,6 @@ public class Bonus : MonoBehaviour
     private UnityEngine.UI.Image bonusImage; // bonus的Image组件
     private float lifeTimer = 0f; // 生存计时器
     private bool isInitialized = false;
-    private bool hasCustomPosition = false; // 标记是否设置了自定义位置
     
     void Start()
     {
@@ -52,7 +51,6 @@ public class Bonus : MonoBehaviour
             Vector3 pos = rectTransform.anchoredPosition;
             pos.x = xPosition;
             rectTransform.anchoredPosition = pos;
-            hasCustomPosition = true;
             
             Debug.Log($"Bonus道具初始化：位置 {xPosition}（静态），实际位置：{rectTransform.anchoredPosition.x}");
         }

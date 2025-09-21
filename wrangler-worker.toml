@@ -1,0 +1,8 @@
+name = "chase-game-api"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "chase"
+database_id = "6a3fbeb7-a329-437d-80b4-0ca7be2632df" 

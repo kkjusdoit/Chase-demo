@@ -12,9 +12,17 @@ public class GameManager : MonoBehaviour
     public Button restartFullScreenButton;
     public Button changeDirectionButton;
     public Text scoreText;
-    public Text maxScoreText;
+    public Text maxScoreText; // 现在用作云端分数显示
     public Text enmeySpeedText;
     public Text playerSpeedText;
+    
+    
+    [Header("云端分数")]
+    public CloudScoreManager cloudScoreManager;
+
+    [Header("玩家名字")]
+    public InputField playerNameInputField;
+    public Text playerNameText;
     
     [Header("碰撞检测设置")]
     public float collisionDistance = 100f; // 碰撞检测距离
@@ -22,10 +30,13 @@ public class GameManager : MonoBehaviour
     
     [Header("游戏状态")]
     private bool isGameOver = false;
+    private bool isGameStarted = false; // 游戏是否已开始（名字已输入）
     private int currentScore = 0;
-    private int bestScore = 0; // 最佳分数
+    private int bestScore = 0; // 本地最佳分数
+    private int cloudBestScore = 0; // 云端最佳分数
     private bool isPlayerInvincible = false; // 玩家无敌状态
     private float invincibleTimer = 0f; // 无敌计时器
+    private string playerName = ""; // 玩家名字
 
 
     
@@ -57,8 +68,6 @@ public class GameManager : MonoBehaviour
     
     void Start()
     {
-        InitializeGame();
-        
         // 绑定重启按钮事件
         if (restartFullScreenButton != null)
         {
@@ -76,13 +85,39 @@ public class GameManager : MonoBehaviour
             enemy = FindFirstObjectByType<Enemy>();
         }
         
-        // 更新分数显示
-        UpdateScoreDisplay();
+        // 自动查找云端分数管理器
+        if (cloudScoreManager == null)
+        {
+            cloudScoreManager = FindFirstObjectByType<CloudScoreManager>();
+        }
+        
+        // 设置玩家名字输入框事件
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.onEndEdit.AddListener(OnPlayerNameSubmitted);
+        }
+        
+        // 设置玩家名字文本点击事件（如果有Button组件）
+        if (playerNameText != null)
+        {
+            Button nameButton = playerNameText.GetComponent<Button>();
+            if (nameButton != null)
+            {
+                nameButton.onClick.AddListener(EditPlayerName);
+            }
+        }
+        
+        // 检查是否已有保存的玩家名字
+        CheckSavedPlayerName();
+        
+        // 监听云端分数提交事件
+        CloudScoreManager.OnScoreSubmitted += OnCloudScoreSubmitted;
     }
     
     void Update()
     {
-        if (!isGameOver)
+        // 只有游戏开始且未结束时才处理游戏逻辑
+        if (isGameStarted && !isGameOver)
         {
             HandleKeyboardInput();
             HandleInvincibleTimer();
@@ -227,6 +262,158 @@ public class GameManager : MonoBehaviour
         }
     }
     
+    // 检查是否已有保存的玩家名字
+    private void CheckSavedPlayerName()
+    {
+        string savedName = PlayerPrefs.GetString("PlayerName", "");
+        
+        if (!string.IsNullOrEmpty(savedName))
+        {
+            // 有保存的名字，显示名字文本并直接开始游戏
+            playerName = savedName;
+            
+            // 隐藏输入框，显示玩家名字文本
+            if (playerNameInputField != null)
+            {
+                playerNameInputField.gameObject.SetActive(false);
+            }
+            
+            if (playerNameText != null)
+            {
+                playerNameText.gameObject.SetActive(true);
+                playerNameText.text = $"Player: {playerName}";
+            }
+            
+            StartGame();
+        }
+        else
+        {
+            // 没有保存的名字，显示输入框
+            ShowPlayerNameInput();
+        }
+    }
+    
+    // 显示玩家名字输入界面
+    private void ShowPlayerNameInput()
+    {
+        isGameStarted = false;
+        Time.timeScale = 0f; // 暂停游戏
+        
+        // 显示输入框，隐藏显示文本
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.gameObject.SetActive(true);
+            playerNameInputField.Select();
+            playerNameInputField.ActivateInputField();
+            playerNameInputField.text = "";
+        }
+        
+        if (playerNameText != null)
+        {
+            playerNameText.gameObject.SetActive(false);
+        }
+        
+        Debug.Log("请输入玩家名字开始游戏");
+    }
+    
+    // 处理玩家名字提交
+    private void OnPlayerNameSubmitted(string inputName)
+    {
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            SubmitPlayerName();
+        }
+    }
+    
+    // 提交玩家名字
+    public void SubmitPlayerName()
+    {
+        if (playerNameInputField == null) return;
+        
+        string inputName = playerNameInputField.text.Trim();
+        
+        if (string.IsNullOrEmpty(inputName))
+        {
+            Debug.Log("玩家名字不能为空！");
+            return;
+        }
+        
+        // 过滤和验证名字
+        inputName = FilterPlayerName(inputName);
+        
+        if (string.IsNullOrEmpty(inputName))
+        {
+            Debug.Log("请输入有效的玩家名字！");
+            return;
+        }
+        
+        // 保存玩家名字
+        playerName = inputName;
+        PlayerPrefs.SetString("PlayerName", playerName);
+        PlayerPrefs.Save();
+        
+        // 隐藏输入框，显示玩家名字文本
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.gameObject.SetActive(false);
+        }
+        
+        if (playerNameText != null)
+        {
+            playerNameText.gameObject.SetActive(true);
+            playerNameText.text = $"Player: {playerName}";
+        }
+        
+        // 设置云端分数管理器的玩家名字
+        if (cloudScoreManager != null)
+        {
+            cloudScoreManager.SetPlayerName(playerName);
+        }
+        
+        // 如果游戏已经开始过，直接恢复游戏；否则开始新游戏
+        if (isGameStarted)
+        {
+            // 恢复游戏时间
+            if (!isGameOver)
+            {
+                Time.timeScale = 1f;
+            }
+        }
+        else
+        {
+            // 开始新游戏
+            StartGame();
+        }
+        
+        Debug.Log($"玩家名字设置为：{playerName}");
+    }
+    
+    // 过滤玩家名字
+    private string FilterPlayerName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+        
+        name = name.Trim();
+        
+        // 限制长度
+        if (name.Length > 20)
+        {
+            name = name.Substring(0, 20);
+        }
+        
+        // 这里可以添加更多过滤规则
+        // 比如过滤敏感词等
+        
+        return name;
+    }
+    
+    // 开始游戏
+    private void StartGame()
+    {
+        isGameStarted = true;
+        InitializeGame();
+    }
+    
     private void InitializeGame()
     {
         isGameOver = false;
@@ -242,8 +429,13 @@ public class GameManager : MonoBehaviour
         // 清理所有bonus道具
         ClearAllBonuses();
         
+        // 更新分数显示
         UpdateScoreDisplay();
-        Debug.Log("游戏初始化完成");
+        
+        // 加载云端分数
+        LoadCloudScore();
+        
+        Debug.Log($"游戏开始！玩家：{playerName}");
     }
     
     // 加载最佳分数
@@ -305,15 +497,39 @@ public class GameManager : MonoBehaviour
     // 检查并更新最佳分数
     private void CheckAndUpdateBestScore()
     {
+        bool isNewRecord = false;
+        
+        // 更新本地最佳分数
         if (currentScore > bestScore)
         {
             bestScore = currentScore;
             SaveBestScore();
-            Debug.Log($"新纪录！最佳分数更新为：{bestScore}");
+            Debug.Log($"新纪录！本地最佳分数更新为：{bestScore}");
+            isNewRecord = true;
+        }
+        
+        // 检查是否超过当前显示的最高分（云端分数）
+        if (currentScore > cloudBestScore)
+        {
+            cloudBestScore = currentScore;
+            Debug.Log($"新纪录！超越云端最佳分数：{cloudBestScore}");
+            isNewRecord = true;
+        }
+        
+        // 提交分数到云端
+        if (cloudScoreManager != null)
+        {
+            cloudScoreManager.SubmitScore(currentScore);
         }
         
         // 更新UI显示
         UpdateScoreDisplay();
+        
+        // 如果创造了新纪录，显示特殊提示
+        if (isNewRecord)
+        {
+            Debug.Log("🎉 恭喜！创造了新的最高分记录！");
+        }
     }
     
     public void RestartGame()
@@ -322,6 +538,7 @@ public class GameManager : MonoBehaviour
         
         // 重置游戏状态
         isGameOver = false;
+        isGameStarted = true; // 重启时保持游戏开始状态
         currentScore = 0;
         Time.timeScale = 1f;
         
@@ -366,9 +583,10 @@ public class GameManager : MonoBehaviour
             scoreText.text = "Score: " + currentScore;
         }
         
+        // maxScoreText 现在显示云端最高分
         if (maxScoreText != null)
         {
-            maxScoreText.text = "Best: " + bestScore;
+            maxScoreText.text = "Best: " + cloudBestScore;
         }
     }
     
@@ -404,7 +622,8 @@ public class GameManager : MonoBehaviour
 
     public void ChangeDirection()
     {
-        if (player != null)
+        // 只有游戏开始且未结束时才能改变方向
+        if (isGameStarted && !isGameOver && player != null)
         {
             player.ChangeDirection();
         }
@@ -418,5 +637,99 @@ public class GameManager : MonoBehaviour
             restartFullScreenButton.gameObject.SetActive(visible);
             Debug.Log($"重启全屏按钮{(visible ? "显示" : "隐藏")}");
         }
+    }
+    
+    // 加载云端分数
+    private void LoadCloudScore()
+    {
+        if (cloudScoreManager != null)
+        {
+            cloudScoreManager.GetCloudHighScore((score) => {
+                cloudBestScore = score;
+                UpdateScoreDisplay();
+                Debug.Log($"加载云端最佳分数：{cloudBestScore}");
+                
+                // 如果本地分数比云端分数高，更新云端分数
+                if (bestScore > cloudBestScore)
+                {
+                    Debug.Log($"本地分数({bestScore})高于云端分数({cloudBestScore})，提交到云端");
+                    cloudScoreManager.SubmitScore(bestScore);
+                }
+            });
+        }
+    }
+    
+    // 获取云端最佳分数
+    public int GetCloudBestScore()
+    {
+        return cloudBestScore;
+    }
+    
+    // 获取当前显示的最高分（现在就是云端分数）
+    public int GetDisplayedBestScore()
+    {
+        return cloudBestScore;
+    }
+    
+    // 获取综合最佳分数（本地和云端的最高值）
+    public int GetOverallBestScore()
+    {
+        return Mathf.Max(bestScore, cloudBestScore);
+    }
+    
+    // 获取玩家名字
+    public string GetPlayerName()
+    {
+        return playerName;
+    }
+    
+    // 检查游戏是否已开始（名字已输入）
+    public bool IsGameStarted()
+    {
+        return isGameStarted;
+    }
+    
+    // 编辑玩家名字（点击名字文本时调用）
+    public void EditPlayerName()
+    {
+        // 暂停游戏
+        Time.timeScale = 0f;
+        
+        // 显示输入框，隐藏文本
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.gameObject.SetActive(true);
+            playerNameInputField.text = playerName; // 预填充当前名字
+            playerNameInputField.Select();
+            playerNameInputField.ActivateInputField();
+        }
+        
+        if (playerNameText != null)
+        {
+            playerNameText.gameObject.SetActive(false);
+        }
+        
+        Debug.Log("编辑玩家名字");
+    }
+    
+    // 处理云端分数提交完成事件
+    private void OnCloudScoreSubmitted(bool success, string message)
+    {
+        if (success)
+        {
+            Debug.Log($"云端分数提交成功: {message}");
+            // 重新加载云端分数以确保显示最新数据
+            LoadCloudScore();
+        }
+        else
+        {
+            Debug.LogWarning($"云端分数提交失败: {message}");
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // 取消事件监听
+        CloudScoreManager.OnScoreSubmitted -= OnCloudScoreSubmitted;
     }
 }

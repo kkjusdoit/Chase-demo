@@ -36,7 +36,9 @@
     <assembly fullname="UnityEngine.TerrainPhysicsModule" preserve="nothing"/>
     <assembly fullname="UnityEngine.UNETModule" preserve="nothing"/>
     <assembly fullname="UnityEngine.UmbraModule" preserve="nothing"/>
-    <assembly fullname="UnityEngine.UnityWebRequestModule" preserve="nothing"/>
+    <!-- 保留WebRequest核心模块 - 云端分数系统需要 -->
+    <assembly fullname="UnityEngine.UnityWebRequestModule" preserve="all"/>
+    <!-- 移除不需要的WebRequest子模块以减小构建大小 -->
     <assembly fullname="UnityEngine.UnityWebRequestAudioModule" preserve="nothing"/>
     <assembly fullname="UnityEngine.UnityWebRequestTextureModule" preserve="nothing"/>
     <assembly fullname="UnityEngine.UnityWebRequestWWWModule" preserve="nothing"/>

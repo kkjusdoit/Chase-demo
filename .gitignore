@@ -39,7 +39,6 @@ ExportedObj/
 *.booproj
 *.svd
 *.pdb
-*.mdb
 *.opendb
 *.VC.db
 
@@ -66,6 +65,17 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Firebase 大文件忽略 (WebGL不需要的原生库)
+Assets/Firebase/Plugins/x86_64/*.bundle
+Assets/Firebase/Plugins/x86_64/*.so
+Assets/Firebase/Plugins/x86_64/*.dll
+Assets/Firebase/Plugins/iOS/*.a
+Assets/Firebase/Plugins/tvOS/*.a
+
+# Firebase 大于50MB的文件
+**/Firebase**/**.bundle
+**/Firebase**/**.so
 
 # macOS
 .DS_Store

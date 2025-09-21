@@ -51,8 +51,8 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置
-        PlayerSettings.stripEngineCode = true;
-        PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
+        PlayerSettings.stripEngineCode = false;
+        // PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.WebGL, ManagedStrippingLevel.High);
         PlayerSettings.stripUnusedMeshComponents = true;
         
         // 脚本编译优化

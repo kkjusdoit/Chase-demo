@@ -78,9 +78,6 @@ public class GameManager : MonoBehaviour
         
         // 更新分数显示
         UpdateScoreDisplay();
-        
-        // 等待Firebase初始化后加载云端分数
-        StartCoroutine(LoadCloudScoreWhenReady());
     }
     
     void Update()
@@ -312,13 +309,6 @@ public class GameManager : MonoBehaviour
         {
             bestScore = currentScore;
             SaveBestScore();
-            
-            // 同时保存到云端
-            if (FirebaseManager.Instance != null && FirebaseManager.Instance.IsUserLoggedIn())
-            {
-                _ = FirebaseManager.Instance.SaveBestScore(bestScore);
-            }
-            
             Debug.Log($"新纪录！最佳分数更新为：{bestScore}");
         }
         
@@ -417,43 +407,6 @@ public class GameManager : MonoBehaviour
         if (player != null)
         {
             player.ChangeDirection();
-        }
-    }
-    
-    // 等待Firebase就绪后加载云端分数
-    private IEnumerator LoadCloudScoreWhenReady()
-    {
-        // 等待Firebase初始化
-        yield return new WaitUntil(() => FirebaseManager.Instance != null && FirebaseManager.Instance.isInitialized);
-        
-        // 如果用户已登录，获取云端分数
-        if (FirebaseManager.Instance.IsUserLoggedIn())
-        {
-            yield return StartCoroutine(LoadCloudScore());
-        }
-    }
-    
-    // 加载云端最高分
-    private IEnumerator LoadCloudScore()
-    {
-        Debug.Log("正在从云端加载最高分...");
-        
-        var task = FirebaseManager.Instance.GetMyBestScore();
-        yield return new WaitUntil(() => task.IsCompleted);
-        
-        if (task.Exception == null)
-        {
-            int cloudScore = task.Result;
-            if (cloudScore > bestScore)
-            {
-                bestScore = cloudScore;
-                Debug.Log($"从云端加载最高分: {bestScore}");
-                UpdateScoreDisplay();
-            }
-        }
-        else
-        {
-            Debug.LogError("云端分数加载失败: " + task.Exception.Message);
         }
     }
     

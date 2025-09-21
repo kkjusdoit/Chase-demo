@@ -281,7 +281,7 @@ public class GameManager : MonoBehaviour
             if (playerNameText != null)
             {
                 playerNameText.gameObject.SetActive(true);
-                playerNameText.text = $"Player: {playerName}";
+                playerNameText.text = $"{playerName}";
             }
             
             StartGame();

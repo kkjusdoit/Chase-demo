@@ -41,13 +41,13 @@ public class BuildOptimizer : MonoBehaviour
     {
         Debug.Log("应用优化设置...");
         
-        // WebGL设置优化
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        // WebGL设置优化（提高Chrome兼容性）
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip; // Gzip比Brotli兼容性更好
         PlayerSettings.WebGL.linkerTarget = WebGLLinkerTarget.Wasm;
-        PlayerSettings.WebGL.memorySize = 32; // 32MB内存限制
+        PlayerSettings.WebGL.memorySize = 128; // 提高到128MB，32MB太小可能导致Chrome崩溃
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
         PlayerSettings.WebGL.nameFilesAsHashes = true;
-        PlayerSettings.WebGL.dataCaching = false;
+        PlayerSettings.WebGL.dataCaching = true; // 启用数据缓存，提高加载速度
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置
@@ -75,9 +75,16 @@ public class BuildOptimizer : MonoBehaviour
         // 进一步的WebGL优化
         try
         {
-            PlayerSettings.WebGL.template = "APPLICATION:Minimal"; // 使用最小模板
+            PlayerSettings.WebGL.template = "APPLICATION:Default"; // 使用默认模板，兼容性更好
             PlayerSettings.WebGL.threadsSupport = false; // 禁用线程支持
             PlayerSettings.WebGL.showDiagnostics = false; // 禁用诊断信息
+            
+            // 强制使用WebGL 1.0以提高Chrome兼容性
+            #if UNITY_2021_2_OR_NEWER
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.WebGL, new UnityEngine.Rendering.GraphicsDeviceType[] { 
+                UnityEngine.Rendering.GraphicsDeviceType.OpenGLES2 
+            });
+            #endif
             
             // 新的Unity版本使用decompressionFallback来控制WASM流式加载
             #if UNITY_2022_1_OR_NEWER

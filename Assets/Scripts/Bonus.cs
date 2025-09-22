@@ -52,7 +52,7 @@ public class Bonus : MonoBehaviour
             pos.x = xPosition;
             rectTransform.anchoredPosition = pos;
             
-            Debug.Log($"Bonus道具初始化：位置 {xPosition}（静态），实际位置：{rectTransform.anchoredPosition.x}");
+            // Debug.Log($"Bonus道具初始化：位置 {xPosition}（静态），实际位置：{rectTransform.anchoredPosition.x}");
         }
         else
         {
@@ -77,7 +77,7 @@ public class Bonus : MonoBehaviour
     // 销毁bonus道具
     public void DestroyBonus()
     {
-        Debug.Log("Bonus道具生命周期结束，自动销毁");
+        // Debug.Log("Bonus道具生命周期结束，自动销毁");
         Destroy(gameObject);
     }
     

@@ -81,7 +81,7 @@ public class Player : MonoBehaviour
                 canvasWidth = currentWidth;
                 lastCanvasWidth = currentWidth;
                 CalculateMoveSpeed(); // 重新计算移动速度
-                Debug.Log($"Player: Canvas宽度更新为 {canvasWidth}，新移动速度：{moveSpeed}");
+                // Debug.Log($"Player: Canvas宽度更新为 {canvasWidth}，新移动速度：{moveSpeed}");
             }
         }
         else
@@ -97,7 +97,7 @@ public class Player : MonoBehaviour
     private void CalculateMoveSpeed()
     {
         moveSpeed = canvasWidth * moveSpeedRatio;
-        Debug.Log($"Player: 计算移动速度 = {canvasWidth} × {moveSpeedRatio} = {moveSpeed}");
+        // Debug.Log($"Player: 计算移动速度 = {canvasWidth} × {moveSpeedRatio} = {moveSpeed}");
     }
     
     // 获取当前移动速度（供其他脚本使用）
@@ -158,7 +158,7 @@ public class Player : MonoBehaviour
     {
         currentDirection = -currentDirection;
         UpdateScale(currentDirection);
-        Debug.Log($"玩家改变方向，当前方向：{(currentDirection > 0 ? "右" : "左")}");
+        // Debug.Log($"玩家改变方向，当前方向：{(currentDirection > 0 ? "右" : "左")}");
     }
     
     // 重置方向（游戏重启时使用）

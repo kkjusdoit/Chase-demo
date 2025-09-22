@@ -76,6 +76,7 @@ public class CloudScoreManager : MonoBehaviour
     public static event System.Action<bool, string> OnScoreSubmitted;
     public static event System.Action<LeaderboardEntry[]> OnLeaderboardLoaded;
     public static event System.Action<PlayerData> OnPlayerDataLoaded;
+    public static event System.Action<bool, string, int> OnPlayerDataChecked; // 新增：设备ID检查结果
     public static event System.Action<string> OnError;
     
     // Single instance
@@ -95,8 +96,7 @@ public class CloudScoreManager : MonoBehaviour
         // Generate unique device ID
         GenerateDeviceId();
         
-        // Load saved player name
-        LoadPlayerName();
+        // 不再从本地加载玩家名字，改为从云端获取
     }
     
     void Start()
@@ -125,26 +125,110 @@ public class CloudScoreManager : MonoBehaviour
         LogDebug($"Device ID: {deviceId}");
     }
     
-    private void LoadPlayerName()
-    {
-        playerName = PlayerPrefs.GetString("PlayerName", "Anonymous");
-        LogDebug($"Player Name: {playerName}");
-    }
-    
     public void SetPlayerName(string newName)
     {
         if (!string.IsNullOrEmpty(newName) && newName.Trim().Length > 0)
         {
             playerName = newName.Trim();
-            PlayerPrefs.SetString("PlayerName", playerName);
-            PlayerPrefs.Save();
             LogDebug($"Player name updated to: {playerName}");
+            //upload player name to cloud
         }
     }
+
     
     public string GetPlayerName()
     {
         return playerName;
+    }
+    
+    // 根据设备ID获取玩家数据
+    public IEnumerator GetPlayerDataByDeviceId()
+    {
+        LogDebug($"正在根据设备ID获取玩家数据: {deviceId}");
+        
+        string url = $"{apiBaseUrl}/player-score/{deviceId}";
+        
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Content-Type", "application/json");
+            
+            yield return request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    PlayerResponse response = JsonUtility.FromJson<PlayerResponse>(request.downloadHandler.text);
+                    
+                    if (response != null && response.success && response.player != null && !string.IsNullOrEmpty(response.player.player_name))
+                    {
+                        // 找到玩家数据
+                        playerName = response.player.player_name;
+                        LogDebug($"找到玩家数据 - 名字: {response.player.player_name}, 最高分: {response.player.best_score}");
+                        
+                        // 通知GameManager有数据
+                        OnPlayerDataChecked?.Invoke(true, response.player.player_name, response.player.best_score);
+                        
+                        // 通知GameManager进行自动登录
+                        if (GameManager.Instance != null)
+                        {
+                            GameManager.Instance.SendMessage("OnCloudPlayerDataLoaded", 
+                                new object[] { true, response.player.player_name, response.player.best_score }, 
+                                SendMessageOptions.DontRequireReceiver);
+                        }
+                    }
+                    else
+                    {
+                        // 没有找到玩家数据
+                        LogDebug("未找到该设备ID的玩家数据");
+                        OnPlayerDataChecked?.Invoke(false, "", 0);
+                        
+                        // 通知GameManager显示注册界面
+                        if (GameManager.Instance != null)
+                        {
+                            GameManager.Instance.SendMessage("OnCloudPlayerDataLoaded", 
+                                new object[] { false, "", 0 }, 
+                                SendMessageOptions.DontRequireReceiver);
+                        }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    LogError($"解析玩家数据失败: {e.Message}");
+                    OnPlayerDataChecked?.Invoke(false, "", 0);
+                    
+                    // 出错时也显示注册界面
+                    if (GameManager.Instance != null)
+                    {
+                        GameManager.Instance.SendMessage("OnCloudPlayerDataLoaded", 
+                            new object[] { false, "", 0 }, 
+                            SendMessageOptions.DontRequireReceiver);
+                    }
+                }
+            }
+            else
+            {
+                // API请求失败，可能是404（用户不存在）或其他错误
+                if (request.responseCode == 404)
+                {
+                    LogDebug("设备ID对应的玩家不存在，显示注册界面");
+                }
+                else
+                {
+                    LogError($"获取玩家数据失败: {request.error} (Code: {request.responseCode})");
+                }
+                
+                OnPlayerDataChecked?.Invoke(false, "", 0);
+                
+                // 通知GameManager显示注册界面
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.SendMessage("OnCloudPlayerDataLoaded", 
+                        new object[] { false, "", 0 }, 
+                        SendMessageOptions.DontRequireReceiver);
+                }
+            }
+        }
     }
     
     public string GetDeviceId()
@@ -374,6 +458,14 @@ public class CloudScoreManager : MonoBehaviour
         if (enableDebugLogs)
         {
             Debug.Log($"[CloudScoreManager] {message}");
+        }
+    }
+    
+    private void LogError(string message)
+    {
+        if (enableDebugLogs)
+        {
+            Debug.LogError($"[CloudScoreManager] {message}");
         }
     }
     

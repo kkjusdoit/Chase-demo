@@ -11,6 +11,13 @@ public class GameManager : MonoBehaviour
 
     public Button restartFullScreenButton;
     public Button changeDirectionButton;
+
+    [Header("Register")]
+    public Button registerButton;
+    public Text registerStatusText;
+
+    public GameObject registerPanel;
+
     public Text scoreText;
     public Text maxScoreText; // 现在用作云端分数显示
     public Text enmeySpeedText;
@@ -19,6 +26,8 @@ public class GameManager : MonoBehaviour
     
     [Header("云端分数")]
     public CloudScoreManager cloudScoreManager;
+
+    public Text leaderboardText;
 
     [Header("玩家名字")]
     public InputField playerNameInputField;
@@ -43,8 +52,6 @@ public class GameManager : MonoBehaviour
     [Header("Bonus系统")]
     private List<GameObject> activeBonuses = new List<GameObject>(); // 活跃的bonus道具列表
     
-    // PlayerPrefs键名
-    private const string BEST_SCORE_KEY = "BestScore";
     
     // 单例模式
     public static GameManager Instance { get; private set; }
@@ -73,6 +80,11 @@ public class GameManager : MonoBehaviour
         {
             restartFullScreenButton.onClick.AddListener(RestartGame);
         }
+
+        if (registerButton != null)
+        {
+            registerButton.onClick.AddListener(SubmitPlayerName);
+        }
         
         // 自动查找游戏对象（如果没有手动分配）
         if (player == null)
@@ -91,11 +103,11 @@ public class GameManager : MonoBehaviour
             cloudScoreManager = FindFirstObjectByType<CloudScoreManager>();
         }
         
-        // 设置玩家名字输入框事件
-        if (playerNameInputField != null)
-        {
-            playerNameInputField.onEndEdit.AddListener(OnPlayerNameSubmitted);
-        }
+        // 移除输入框的自动提交事件，现在只通过按钮提交
+        // if (playerNameInputField != null)
+        // {
+        //     playerNameInputField.onEndEdit.AddListener(OnPlayerNameSubmitted);
+        // }
         
         // 设置玩家名字文本点击事件（如果有Button组件）
         if (playerNameText != null)
@@ -107,11 +119,18 @@ public class GameManager : MonoBehaviour
             }
         }
         
-        // 检查是否已有保存的玩家名字
-        CheckSavedPlayerName();
+        // 初始状态：暂停游戏，等待登录检查
+        Time.timeScale = 0f;
+        isGameStarted = false;
+        
+        // 基于云端数据进行自动登录检查
+        StartCoroutine(CheckCloudLoginStatus());
         
         // 监听云端分数提交事件
         CloudScoreManager.OnScoreSubmitted += OnCloudScoreSubmitted;
+        
+        // 监听排行榜加载事件
+        CloudScoreManager.OnLeaderboardLoaded += DisplayLeaderboard;
     }
     
     void Update()
@@ -187,7 +206,7 @@ public class GameManager : MonoBehaviour
             // 加分
             currentScore += 1;
             UpdateScoreDisplay();
-            Debug.Log($"收集到bonus道具！当前分数：{currentScore}");
+            // Debug.Log($"收集到bonus道具！当前分数：{currentScore}");
             
             // 销毁bonus道具
             Destroy(bonus);
@@ -262,34 +281,77 @@ public class GameManager : MonoBehaviour
         }
     }
     
-    // 检查是否已有保存的玩家名字
-    private void CheckSavedPlayerName()
+    // 检查云端登录状态
+    private IEnumerator CheckCloudLoginStatus()
     {
-        string savedName = PlayerPrefs.GetString("PlayerName", "");
-        
-        if (!string.IsNullOrEmpty(savedName))
+        // 等待CloudScoreManager初始化完成
+        while (cloudScoreManager == null)
         {
-            // 有保存的名字，显示名字文本并直接开始游戏
-            playerName = savedName;
+            cloudScoreManager = FindFirstObjectByType<CloudScoreManager>();
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        // 显示加载提示
+        ShowRegisterStatus("正在检查用户数据...", false);
+        
+        // 尝试根据设备ID获取玩家数据
+        yield return StartCoroutine(cloudScoreManager.GetPlayerDataByDeviceId());
+    }
+    
+    // 云端数据加载完成后的回调
+    private void OnCloudPlayerDataLoaded(object[] data)
+    {
+        bool hasData = (bool)data[0];
+        string playerName = (string)data[1]; 
+        int bestScore = (int)data[2];
+        
+        HandleCloudPlayerDataLoaded(hasData, playerName, bestScore);
+    }
+    
+    // 处理云端玩家数据加载结果
+    private void HandleCloudPlayerDataLoaded(bool hasData, string playerName, int bestScore)
+    {
+        if (hasData)
+        {
+            // 找到云端数据，自动登录
+            this.playerName = playerName;
+            this.cloudBestScore = bestScore;
             
-            // 隐藏输入框，显示玩家名字文本
-            if (playerNameInputField != null)
+            // 隐藏注册面板
+            if (registerPanel != null)
             {
-                playerNameInputField.gameObject.SetActive(false);
+                registerPanel.SetActive(false);
             }
             
+            // 显示玩家名字
             if (playerNameText != null)
             {
                 playerNameText.gameObject.SetActive(true);
-                playerNameText.text = $"{playerName}";
+                playerNameText.text = $"Player: {playerName}";
             }
             
+            // 设置云端分数管理器的玩家名字
+            if (cloudScoreManager != null)
+            {
+                cloudScoreManager.SetPlayerName(playerName);
+            }
+            
+            // 更新分数显示
+            UpdateScoreDisplay();
+            
+            // 更新排行榜
+            UpdateLeaderboardDisplay();
+            
+            // 开始游戏
             StartGame();
+            
+            Debug.Log($"自动登录成功！玩家：{playerName}，最高分：{bestScore}");
         }
         else
         {
-            // 没有保存的名字，显示输入框
+            // 没有找到云端数据，显示注册界面
             ShowPlayerNameInput();
+            Debug.Log("未找到云端用户数据，显示注册界面");
         }
     }
     
@@ -299,30 +361,40 @@ public class GameManager : MonoBehaviour
         isGameStarted = false;
         Time.timeScale = 0f; // 暂停游戏
         
-        // 显示输入框，隐藏显示文本
-        if (playerNameInputField != null)
+        // 清除状态信息
+        ClearRegisterStatus();
+        
+        // 显示注册面板
+        if (registerPanel != null)
         {
-            playerNameInputField.gameObject.SetActive(true);
-            playerNameInputField.Select();
-            playerNameInputField.ActivateInputField();
-            playerNameInputField.text = "";
+            registerPanel.SetActive(true);
         }
         
+        // 隐藏玩家名字文本
         if (playerNameText != null)
         {
             playerNameText.gameObject.SetActive(false);
         }
         
+        // 激活输入框
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.Select();
+            playerNameInputField.ActivateInputField();
+            playerNameInputField.text = "";
+        }
+        
         Debug.Log("请输入玩家名字开始游戏");
     }
     
-    // 处理玩家名字提交
+    // 处理玩家名字提交（现在只通过按钮触发，保留方法以防其他地方调用）
     private void OnPlayerNameSubmitted(string inputName)
     {
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-        {
-            SubmitPlayerName();
-        }
+        // 移除自动提交逻辑，现在只通过register按钮提交
+        // if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        // {
+        //     SubmitPlayerName();
+        // }
     }
     
     // 提交玩家名字
@@ -330,11 +402,28 @@ public class GameManager : MonoBehaviour
     {
         if (playerNameInputField == null) return;
         
+        // 清除之前的状态信息
+        ClearRegisterStatus();
+        
         string inputName = playerNameInputField.text.Trim();
         
         if (string.IsNullOrEmpty(inputName))
         {
-            Debug.Log("玩家名字不能为空！");
+            ShowRegisterStatus("玩家名字不能为空！", true);
+            return;
+        }
+        
+        // 检查名字长度
+        if (inputName.Length > 20)
+        {
+            ShowRegisterStatus("玩家名字不能超过20个字符！", true);
+            return;
+        }
+        
+        // 检查是否包含特殊字符（可选）
+        if (inputName.Contains("<") || inputName.Contains(">") || inputName.Contains("&"))
+        {
+            ShowRegisterStatus("玩家名字不能包含特殊字符！", true);
             return;
         }
         
@@ -343,21 +432,20 @@ public class GameManager : MonoBehaviour
         
         if (string.IsNullOrEmpty(inputName))
         {
-            Debug.Log("请输入有效的玩家名字！");
+            ShowRegisterStatus("请输入有效的玩家名字！", true);
             return;
         }
         
-        // 保存玩家名字
+        // 显示成功状态
+        ShowRegisterStatus("注册成功！", false);
+        
+        // 设置玩家名字（将通过云端API保存）
         playerName = inputName;
-        PlayerPrefs.SetString("PlayerName", playerName);
-        PlayerPrefs.Save();
         
-        // 隐藏输入框，显示玩家名字文本
-        if (playerNameInputField != null)
-        {
-            playerNameInputField.gameObject.SetActive(false);
-        }
+        // 延迟隐藏注册面板并开始游戏，让用户看到成功消息
+        StartCoroutine(HandleRegisterSuccessWithDelay(1.5f));
         
+        // 显示玩家名字文本
         if (playerNameText != null)
         {
             playerNameText.gameObject.SetActive(true);
@@ -368,21 +456,6 @@ public class GameManager : MonoBehaviour
         if (cloudScoreManager != null)
         {
             cloudScoreManager.SetPlayerName(playerName);
-        }
-        
-        // 如果游戏已经开始过，直接恢复游戏；否则开始新游戏
-        if (isGameStarted)
-        {
-            // 恢复游戏时间
-            if (!isGameOver)
-            {
-                Time.timeScale = 1f;
-            }
-        }
-        else
-        {
-            // 开始新游戏
-            StartGame();
         }
         
         Debug.Log($"玩家名字设置为：{playerName}");
@@ -407,6 +480,89 @@ public class GameManager : MonoBehaviour
         return name;
     }
     
+    // 显示注册状态信息
+    private void ShowRegisterStatus(string message, bool isError = true)
+    {
+        if (registerStatusText != null)
+        {
+            registerStatusText.text = message;
+            registerStatusText.gameObject.SetActive(true);
+            
+            // 可以根据是否为错误设置不同颜色
+            if (isError)
+            {
+                registerStatusText.color = Color.red;
+            }
+            else
+            {
+                registerStatusText.color = Color.green;
+            }
+        }
+        
+        Debug.Log($"注册状态: {message}");
+    }
+    
+    // 清除注册状态信息
+    private void ClearRegisterStatus()
+    {
+        if (registerStatusText != null)
+        {
+            registerStatusText.text = "";
+            registerStatusText.gameObject.SetActive(false);
+        }
+    }
+    
+    // 处理注册成功后的延时流程
+    private IEnumerator HandleRegisterSuccessWithDelay(float delay)
+    {
+        registerButton.gameObject.SetActive(false);
+        Debug.Log("注册成功后的延时流程");
+        yield return new WaitForSecondsRealtime(delay);
+        
+        Debug.Log("等待延时" +  registerPanel != null);
+        // 隐藏注册面板
+        if (registerPanel != null)
+        {
+
+            registerPanel.SetActive(false);
+        }
+        Debug.Log("隐藏注册面板");
+        ClearRegisterStatus();
+        Debug.Log("清除注册状态");
+        // 延时后开始游戏或恢复游戏
+        if (isGameStarted)
+        {
+            Debug.Log("恢复游戏时间");
+            // 恢复游戏时间
+            if (!isGameOver)
+            {
+                Time.timeScale = 1f;
+            }
+        }
+        else
+        {
+            Debug.Log("开始新游戏");
+            // 更新排行榜
+            UpdateLeaderboardDisplay();
+            // 开始新游戏
+            StartGame();
+        }
+    }
+    
+    // 延迟隐藏注册UI的协程（保留用于其他可能的用途）
+    private IEnumerator HideRegisterUIAfterDelay(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        
+        // 隐藏注册面板
+        if (registerPanel != null)
+        {
+            registerPanel.SetActive(false);
+        }
+        
+        ClearRegisterStatus();
+    }
+    
     // 开始游戏
     private void StartGame()
     {
@@ -420,8 +576,7 @@ public class GameManager : MonoBehaviour
         currentScore = 0;
         Time.timeScale = 1f;
         
-        // 加载最佳分数
-        LoadBestScore();
+        // 本地不再存储最佳分数，使用云端数据
         
         // 隐藏重启按钮
         SetRestartFullScreenButtonVisible(false);
@@ -438,20 +593,6 @@ public class GameManager : MonoBehaviour
         Debug.Log($"游戏开始！玩家：{playerName}");
     }
     
-    // 加载最佳分数
-    private void LoadBestScore()
-    {
-        bestScore = PlayerPrefs.GetInt(BEST_SCORE_KEY, 0);
-        Debug.Log($"加载最佳分数：{bestScore}");
-    }
-    
-    // 保存最佳分数
-    private void SaveBestScore()
-    {
-        PlayerPrefs.SetInt(BEST_SCORE_KEY, bestScore);
-        PlayerPrefs.Save();
-        Debug.Log($"保存最佳分数：{bestScore}");
-    }
     
     private void CheckCollision()
     {
@@ -478,6 +619,9 @@ public class GameManager : MonoBehaviour
         // 检查并更新最佳分数
         CheckAndUpdateBestScore();
         
+        // 更新排行榜（游戏结束后可能有新的高分）
+        UpdateLeaderboardDisplay();
+        
         // 显示重启按钮
         SetRestartFullScreenButtonVisible(true);
         
@@ -499,14 +643,7 @@ public class GameManager : MonoBehaviour
     {
         bool isNewRecord = false;
         
-        // 更新本地最佳分数
-        if (currentScore > bestScore)
-        {
-            bestScore = currentScore;
-            SaveBestScore();
-            Debug.Log($"新纪录！本地最佳分数更新为：{bestScore}");
-            isNewRecord = true;
-        }
+        // 本地不再存储最佳分数，新记录检查完全由云端处理
         
         // 检查是否超过当前显示的最高分（云端分数）
         if (currentScore > cloudBestScore)
@@ -587,6 +724,72 @@ public class GameManager : MonoBehaviour
         if (maxScoreText != null)
         {
             maxScoreText.text = "Best: " + cloudBestScore;
+        }
+    }
+    
+    // 更新排行榜显示
+    private void UpdateLeaderboardDisplay()
+    {
+        if (cloudScoreManager != null)
+        {
+            Debug.Log("开始加载排行榜数据...");
+            cloudScoreManager.LoadLeaderboard(10);
+        }
+    }
+    
+    // 显示排行榜数据
+    private void DisplayLeaderboard(LeaderboardEntry[] entries)
+    {
+        if (leaderboardText == null || entries == null)
+        {
+            Debug.LogWarning("排行榜文本控件未设置或数据为空");
+            return;
+        }
+        
+        string leaderboardContent = "<b><color=#FFD700>🏆 Leaderboard 🏆</color></b>\n\n";
+        
+        for (int i = 0; i < entries.Length; i++)
+        {
+            string rankIcon = GetRankIcon(i + 1);
+            string nameColor = GetRankColor(i + 1);
+            string scoreColor = "#00FF00"; // 绿色分数
+            
+            leaderboardContent += $"{rankIcon} <color={nameColor}><b>{entries[i].player_name}</b></color>: <color={scoreColor}><b>{entries[i].best_score}</b></color>\n";
+        }
+        
+        // 移除最后的换行符
+        if (leaderboardContent.Length > 0)
+        {
+            leaderboardContent = leaderboardContent.TrimEnd('\n');
+        }
+        
+        leaderboardText.text = leaderboardContent;
+        Debug.Log($"排行榜已更新，显示{entries.Length}条记录");
+    }
+    
+    // 获取排名图标
+    private string GetRankIcon(int rank)
+    {
+        switch (rank)
+        {
+            default: return $"<b>{rank}.</b>"; // 数字排名
+        }
+    }
+    
+    // 获取排名颜色
+    private string GetRankColor(int rank)
+    {
+        switch (rank)
+        {
+            case 1: return "#FFD700"; // 金色
+            case 2: return "#C0C0C0"; // 银色
+            case 3: return "#CD7F32"; // 铜色
+            case 4:
+            case 5: return "#9370DB"; // 紫色
+            case 6:
+            case 7:
+            case 8: return "#4169E1"; // 蓝色
+            default: return "#FFFFFF"; // 白色
         }
     }
     
@@ -695,18 +898,27 @@ public class GameManager : MonoBehaviour
         // 暂停游戏
         Time.timeScale = 0f;
         
-        // 显示输入框，隐藏文本
-        if (playerNameInputField != null)
+        // 清除状态信息
+        ClearRegisterStatus();
+        
+        // 显示注册面板
+        if (registerPanel != null)
         {
-            playerNameInputField.gameObject.SetActive(true);
-            playerNameInputField.text = playerName; // 预填充当前名字
-            playerNameInputField.Select();
-            playerNameInputField.ActivateInputField();
+            registerPanel.SetActive(true);
         }
         
+        // 隐藏玩家名字文本
         if (playerNameText != null)
         {
             playerNameText.gameObject.SetActive(false);
+        }
+        
+        // 预填充当前名字并激活输入框
+        if (playerNameInputField != null)
+        {
+            playerNameInputField.text = playerName; // 预填充当前名字
+            playerNameInputField.Select();
+            playerNameInputField.ActivateInputField();
         }
         
         Debug.Log("编辑玩家名字");
@@ -731,5 +943,6 @@ public class GameManager : MonoBehaviour
     {
         // 取消事件监听
         CloudScoreManager.OnScoreSubmitted -= OnCloudScoreSubmitted;
+        CloudScoreManager.OnLeaderboardLoaded -= DisplayLeaderboard;
     }
 }

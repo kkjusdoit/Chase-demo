@@ -113,7 +113,7 @@ public class Enemy : MonoBehaviour
                 canvasWidth = currentWidth;
                 lastCanvasWidth = currentWidth;
                 UpdateSpeedFromPlayer(); // 重新计算移动速度
-                Debug.Log($"Enemy: Canvas宽度更新为 {canvasWidth}，重新计算速度");
+                // Debug.Log($"Enemy: Canvas宽度更新为 {canvasWidth}，重新计算速度");
             }
         }
         else
@@ -134,7 +134,7 @@ public class Enemy : MonoBehaviour
             maxSpeed = playerSpeed;
             minSpeed = playerSpeed;
             currentSpeed = playerSpeed;
-            Debug.Log($"Enemy: 从Player获取速度 {playerSpeed}");
+            // Debug.Log($"Enemy: 从Player获取速度 {playerSpeed}");
         }
         else
         {
@@ -211,7 +211,7 @@ public class Enemy : MonoBehaviour
     {
         if (bonusPrefab == null || GameManager.Instance == null)
         {
-            Debug.LogWarning("bonusPrefab未设置或GameManager不存在，无法生成bonus道具");
+            // Debug.LogWarning("bonusPrefab未设置或GameManager不存在，无法生成bonus道具");
             return;
         }
         
@@ -234,7 +234,7 @@ public class Enemy : MonoBehaviour
         // 计算起始位置（屏幕中心向左偏移）
         float startX = -usableWidth * 0.5f;
         
-        Debug.Log($"动态生成{bonusCount}个bonus道具，屏幕宽度：{canvasWidth}，可用宽度：{usableWidth}，计算间距：{dynamicSpacing}，起始位置：{startX}");
+        // Debug.Log($"动态生成{bonusCount}个bonus道具，屏幕宽度：{canvasWidth}，可用宽度：{usableWidth}，计算间距：{dynamicSpacing}，起始位置：{startX}");
         
         // 生成bonus道具
         for (int i = 0; i < bonusCount; i++)
@@ -260,7 +260,7 @@ public class Enemy : MonoBehaviour
             float originalX = bonusX;
             bonusX += Random.Range(-bonusRandomOffset, bonusRandomOffset);
             
-            Debug.Log($"准备生成bonus {i + 1}，原始位置：{originalX:F1}，随机偏移后：{bonusX:F1}");
+            // Debug.Log($"准备生成bonus {i + 1}，原始位置：{originalX:F1}，随机偏移后：{bonusX:F1}");
             
             // 获取bonus脚本组件并初始化
             Bonus bonusScript = bonusObj.GetComponent<Bonus>();
@@ -278,11 +278,11 @@ public class Enemy : MonoBehaviour
                     Vector3 bonusPos = bonusRect.anchoredPosition;
                     bonusPos.x = bonusX;
                     bonusRect.anchoredPosition = bonusPos;
-                    Debug.Log($"直接设置bonus位置：{bonusX}，实际位置：{bonusRect.anchoredPosition.x}");
+                    // Debug.Log($"直接设置bonus位置：{bonusX}，实际位置：{bonusRect.anchoredPosition.x}");
                 }
             }
             
-            Debug.Log($"生成静态bonus道具 {i + 1}/{bonusCount} 目标位置：{bonusX}");
+            // Debug.Log($"生成静态bonus道具 {i + 1}/{bonusCount} 目标位置：{bonusX}");
         }
     }
     

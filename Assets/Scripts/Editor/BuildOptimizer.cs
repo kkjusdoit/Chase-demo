@@ -47,7 +47,7 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.WebGL.memorySize = 128; // 提高到128MB，32MB太小可能导致Chrome崩溃
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
         PlayerSettings.WebGL.nameFilesAsHashes = true;
-        PlayerSettings.WebGL.dataCaching = true; // 启用数据缓存，提高加载速度
+        PlayerSettings.WebGL.dataCaching = false; // 启用数据缓存，提高加载速度
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置

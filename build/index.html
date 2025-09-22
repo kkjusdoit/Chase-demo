@@ -91,14 +91,8 @@
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        // Lower canvas resolution on mobile devices to improve performance and compatibility
+        // Lower canvas resolution on mobile devices to improve performance
         config.devicePixelRatio = 1;
-        
-        // Add mobile-specific optimizations for Safari
-        config.matchWebGLToCanvasSize = false;
-        
-        // Reduce memory usage for mobile devices
-        config.memorySize = 256;
 
 
       } else {
@@ -109,24 +103,6 @@
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 
-      // Check WebAssembly support
-      function checkWebAssemblySupport() {
-        try {
-          if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
-            const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
-            if (module instanceof WebAssembly.Module) {
-              return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
-            }
-          }
-        } catch (e) {
-          console.warn("WebAssembly support check failed:", e);
-        }
-        return false;
-      }
-
-      if (!checkWebAssemblySupport()) {
-        unityShowBanner("您的浏览器不支持WebAssembly，请更新到最新版本的Safari或使用Chrome浏览器。", "error");
-      } else {
 
       var script = document.createElement("script");
       script.src = loaderUrl;
@@ -153,8 +129,6 @@
             };
 
       document.body.appendChild(script);
-      
-    } // 闭合 else 语句块
 
     </script>
   </body>

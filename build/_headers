@@ -1,32 +1,18 @@
 # Cloudflare Pages Headers Configuration
-# Unity WebGL MIME Types
-
-/Build/*.unityweb
-  Content-Type: application/octet-stream
-  Content-Encoding: gzip
-  Cache-Control: public, max-age=31536000
+# Unity WebGL MIME Types - 简化版本
 
 /Build/*.wasm.unityweb
   Content-Type: application/wasm
-  Content-Encoding: gzip
   Cache-Control: public, max-age=31536000
 
 /Build/*.js.unityweb
   Content-Type: application/javascript
-  Content-Encoding: gzip
   Cache-Control: public, max-age=31536000
 
 /Build/*.data.unityweb
   Content-Type: application/octet-stream
-  Content-Encoding: gzip
   Cache-Control: public, max-age=31536000
 
-# 其他静态资源
-/Build/*.js
-  Content-Type: application/javascript
+/Build/*.unityweb
+  Content-Type: application/octet-stream
   Cache-Control: public, max-age=31536000
-
-/*
-  X-Frame-Options: SAMEORIGIN
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin

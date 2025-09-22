@@ -91,9 +91,14 @@
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
+        // Lower canvas resolution on mobile devices to improve performance and compatibility
+        config.devicePixelRatio = 1;
+        
+        // Add mobile-specific optimizations for Safari
+        config.matchWebGLToCanvasSize = false;
+        
+        // Reduce memory usage for mobile devices
+        config.memorySize = 256;
 
 
       } else {
@@ -104,8 +109,31 @@
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 
+      // Check WebAssembly support
+      function checkWebAssemblySupport() {
+        try {
+          if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
+            const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+            if (module instanceof WebAssembly.Module) {
+              return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+            }
+          }
+        } catch (e) {
+          console.warn("WebAssembly support check failed:", e);
+        }
+        return false;
+      }
+
+      if (!checkWebAssemblySupport()) {
+        unityShowBanner("您的浏览器不支持WebAssembly，请更新到最新版本的Safari或使用Chrome浏览器。", "error");
+        return;
+      }
+
       var script = document.createElement("script");
       script.src = loaderUrl;
+      script.onerror = () => {
+        unityShowBanner("加载游戏文件失败，请检查网络连接或刷新页面重试。", "error");
+      };
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
@@ -116,7 +144,12 @@
                 };
 
               }).catch((message) => {
-                alert(message);
+                console.error("Unity加载失败:", message);
+                var errorMsg = "游戏加载失败。";
+                if (message.includes("wasm")) {
+                  errorMsg += "这可能是由于WebAssembly兼容性问题。请尝试：\n1. 刷新页面\n2. 清除浏览器缓存\n3. 使用最新版Safari或Chrome浏览器";
+                }
+                unityShowBanner(errorMsg, "error");
               });
             };
 

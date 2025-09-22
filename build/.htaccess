@@ -1,0 +1,43 @@
+# Unity WebGL MIME Types Configuration
+# For Apache servers (backup solution)
+
+# Enable compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/wasm
+    AddOutputFilterByType DEFLATE application/octet-stream
+</IfModule>
+
+# Set correct MIME types for Unity WebGL files
+<IfModule mod_mime.c>
+    # WebAssembly files
+    AddType application/wasm .wasm
+    AddType application/wasm .wasm.unityweb
+    
+    # Unity compressed files
+    AddType application/javascript .js.unityweb
+    AddType application/octet-stream .data.unityweb
+    AddType application/octet-stream .unityweb
+</IfModule>
+
+# Enable gzip encoding for Unity files
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Handle .unityweb files as gzip compressed
+    RewriteCond %{REQUEST_FILENAME} \.unityweb$
+    RewriteRule ^(.*)$ $1 [L]
+    
+    # Set encoding for compressed files
+    <FilesMatch "\.unityweb$">
+        Header set Content-Encoding gzip
+    </FilesMatch>
+</IfModule>
+
+# Cache control
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType application/wasm "access plus 1 year"
+    ExpiresByType application/octet-stream "access plus 1 year"
+</IfModule>

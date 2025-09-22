@@ -619,9 +619,6 @@ public class GameManager : MonoBehaviour
         // 检查并更新最佳分数
         CheckAndUpdateBestScore();
         
-        // 更新排行榜（游戏结束后可能有新的高分）
-        UpdateLeaderboardDisplay();
-        
         // 显示重启按钮
         SetRestartFullScreenButtonVisible(true);
         
@@ -932,6 +929,10 @@ public class GameManager : MonoBehaviour
             Debug.Log($"云端分数提交成功: {message}");
             // 重新加载云端分数以确保显示最新数据
             LoadCloudScore();
+            
+            // 分数上传成功后更新排行榜，确保显示最新排名
+            Debug.Log("分数上传完成，开始更新排行榜...");
+            UpdateLeaderboardDisplay();
         }
         else
         {

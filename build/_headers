@@ -1,6 +1,19 @@
 # Cloudflare Pages Headers Configuration
-# Unity WebGL MIME Types - 简化版本
+# Unity WebGL MIME Types - 修复重复匹配问题
 
-/Build/*.unityweb
+/Build/*.wasm.unityweb
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000
+
+/Build/*.js.unityweb
+  Content-Type: application/javascript
+  Cache-Control: public, max-age=31536000
+
+/Build/*.data.unityweb
   Content-Type: application/octet-stream
   Cache-Control: public, max-age=31536000
+
+# 移除这个通配符规则，因为上面的规则已经覆盖了所有情况
+# /Build/*.unityweb
+#   Content-Type: application/octet-stream
+#   Cache-Control: public, max-age=31536000

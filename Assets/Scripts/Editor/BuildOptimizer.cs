@@ -41,13 +41,13 @@ public class BuildOptimizer : MonoBehaviour
     {
         Debug.Log("应用优化设置...");
         
-        // WebGL设置优化 - 禁用压缩避免服务器配置问题
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli; // Brotli压缩，Cloudflare原生支持        
+        // WebGL设置优化（提高Chrome兼容性）
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip; // Gzip比Brotli兼容性更好
         PlayerSettings.WebGL.linkerTarget = WebGLLinkerTarget.Wasm;
-        PlayerSettings.WebGL.memorySize = 64; // 降低到64MB，提高移动端兼容性
+        PlayerSettings.WebGL.memorySize = 128; // 提高到128MB，32MB太小可能导致Chrome崩溃
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
         PlayerSettings.WebGL.nameFilesAsHashes = true;
-        PlayerSettings.WebGL.dataCaching = true; // 启用数据缓存，提高加载速度
+        PlayerSettings.WebGL.dataCaching = false; // 启用数据缓存，提高加载速度
         PlayerSettings.WebGL.debugSymbols = false;
         
         // 代码剥离设置

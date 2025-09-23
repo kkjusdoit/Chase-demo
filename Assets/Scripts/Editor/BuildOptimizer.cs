@@ -44,7 +44,7 @@ public class BuildOptimizer : MonoBehaviour
         // WebGL设置优化（提高Chrome兼容性）
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip; // Gzip比Brotli兼容性更好
         PlayerSettings.WebGL.linkerTarget = WebGLLinkerTarget.Wasm;
-        PlayerSettings.WebGL.memorySize = 128; // 提高到128MB，32MB太小可能导致Chrome崩溃
+        PlayerSettings.WebGL.memorySize = 64; // 降低到64MB，减少内存压力，避免音频错误
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
         PlayerSettings.WebGL.nameFilesAsHashes = true;
         PlayerSettings.WebGL.dataCaching = false; // 启用数据缓存，提高加载速度
@@ -67,6 +67,10 @@ public class BuildOptimizer : MonoBehaviour
         PlayerSettings.SetVirtualRealitySupported(BuildTargetGroup.WebGL, false);
         PlayerSettings.enableInternalProfiler = false;
         
+        // 音频设置优化 - 完全禁用音频以避免 WebAudio 错误
+        PlayerSettings.muteOtherAudioSources = true;
+        PlayerSettings.runInBackground = false; // 禁用后台运行，减少音频冲突
+        
         // 移除Unity启动画面和Logo
         PlayerSettings.SplashScreen.show = false;
         PlayerSettings.SplashScreen.showUnityLogo = false;
@@ -78,6 +82,10 @@ public class BuildOptimizer : MonoBehaviour
             PlayerSettings.WebGL.template = "APPLICATION:Default"; // 使用默认模板，兼容性更好
             PlayerSettings.WebGL.threadsSupport = false; // 禁用线程支持
             PlayerSettings.WebGL.showDiagnostics = false; // 禁用诊断信息
+            
+            // 完全禁用音频系统 - 修复 WEBAudio.audioInstances.forEach 错误
+            PlayerSettings.muteOtherAudioSources = true; // 静音其他音频源
+            PlayerSettings.SetPropertyBool("muteAudio", true, BuildTargetGroup.WebGL); // 完全禁用音频
             
             // 强制使用WebGL 1.0以提高Chrome兼容性
             #if UNITY_2021_2_OR_NEWER

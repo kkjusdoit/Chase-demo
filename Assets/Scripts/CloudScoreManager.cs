@@ -63,7 +63,7 @@ public class PlayerResponse
 public class CloudScoreManager : MonoBehaviour
 {
     [Header("API Configuration")]
-    [SerializeField] private string apiBaseUrl = "https://jokingly-postcerebral-gabriele.ngrok-free.dev";//https://chase-game-api.kkjusdoit.workers.dev";
+    private string apiBaseUrl = "https://chase-demo-kn82.onrender.com"; // 移除末尾斜杠
     
     [Header("Player Settings")]
     [SerializeField] private string playerName = "Anonymous";

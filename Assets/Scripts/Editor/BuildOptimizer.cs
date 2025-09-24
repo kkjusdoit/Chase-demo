@@ -10,7 +10,7 @@ public class BuildOptimizer : MonoBehaviour
     {
         Debug.Log("开始优化构建...");
         
-        // 设置构建选项
+        // 设置构建选项      
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
         buildPlayerOptions.scenes = new[] { "Assets/Scenes/MainScene.unity" };
         buildPlayerOptions.locationPathName = "build";

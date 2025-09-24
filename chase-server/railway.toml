@@ -1,9 +1,9 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "npm start"
 restartPolicyType = "always"
 
 [env]
 NODE_ENV = "production"
+PORT = "3000"

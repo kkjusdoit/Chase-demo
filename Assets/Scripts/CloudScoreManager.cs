@@ -64,8 +64,8 @@ public class CloudScoreManager : MonoBehaviour
 {
     [Header("API Configuration")]
     // private string apiBaseUrl = "https://chase-demo-kn82.onrender.com"; // render托管服务器
-    // private string apiBaseUrl = "https://chase-game-api.kkjusdoit.workers.dev"; // cloudflare workers
-    private string apiBaseUrl = "https://jokingly-postcerebral-gabriele.ngrok-free.dev";// 自建服务器
+    private string apiBaseUrl = "https://chase-game-api.kkjusdoit.workers.dev"; // cloudflare workers
+    // private string apiBaseUrl = "https://jokingly-postcerebral-gabriele.ngrok-free.dev";// 自建服务器
     
     [Header("Player Settings")]
     [SerializeField] private string playerName = "Anonymous";
